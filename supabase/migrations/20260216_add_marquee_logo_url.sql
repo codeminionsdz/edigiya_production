@@ -1,0 +1,2 @@
+ALTER TABLE marquee_brands
+ADD COLUMN IF NOT EXISTS logo_url TEXT;
