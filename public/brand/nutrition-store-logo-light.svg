@@ -1,0 +1,25 @@
+<svg width="512" height="160" viewBox="0 0 512 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g stroke="#F5F5F5" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="96" y1="38" x2="156" y2="38" />
+    <line x1="356" y1="38" x2="416" y2="38" />
+    <rect x="64" y="22" width="20" height="32" rx="4" />
+    <rect x="84" y="18" width="12" height="40" rx="3" />
+    <rect x="416" y="22" width="20" height="32" rx="4" />
+    <rect x="436" y="18" width="12" height="40" rx="3" />
+    <path d="M186 38C186 14 202 6 214 6C226 6 236 18 236 34V56" />
+    <path d="M326 38C326 14 310 6 298 6C286 6 276 18 276 34V56" />
+    <rect x="236" y="18" width="40" height="44" rx="18" />
+    <path d="M241 62L256 84L271 62" />
+  </g>
+
+  <path d="M78 108L256 92L434 108L256 124L78 108Z" fill="#F5F5F5" fill-opacity="0.08"/>
+
+  <text x="256" y="113" text-anchor="middle" fill="#F5F5F5" font-size="40" font-family="Arial, Helvetica, sans-serif" font-weight="800" letter-spacing="2">
+    NUTRITION
+  </text>
+  <text x="256" y="148" text-anchor="middle" fill="#F5F5F5" font-size="30" font-family="Arial, Helvetica, sans-serif" font-weight="700" letter-spacing="7">
+    STORE
+  </text>
+  <line x1="124" y1="142" x2="176" y2="142" stroke="#F5F5F5" stroke-width="4" />
+  <line x1="336" y1="142" x2="388" y2="142" stroke="#F5F5F5" stroke-width="4" />
+</svg>
