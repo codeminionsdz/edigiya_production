@@ -20,6 +20,46 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 // Anon client for public operations
 const supabaseAnon = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+function parseStorageObjectFromUrl(urlValue: string): { bucket: string; path: string } | null {
+  try {
+    const baseOrigin = new URL(SUPABASE_URL).origin;
+    const url = new URL(urlValue);
+    if (url.origin !== baseOrigin) return null;
+
+    const parts = url.pathname.split('/').filter(Boolean);
+    const idx = parts.findIndex((p) => p === 'storage');
+    if (idx === -1) return null;
+
+    // Expected: /storage/v1/object/<public|sign|...>/<bucket>/<path...>
+    const storageParts = parts.slice(idx);
+    if (storageParts[0] !== 'storage' || storageParts[1] !== 'v1' || storageParts[2] !== 'object') return null;
+    if (storageParts.length < 6) return null;
+
+    const bucket = storageParts[4];
+    const path = storageParts.slice(5).join('/');
+    if (!bucket || !path) return null;
+    return { bucket, path };
+  } catch {
+    return null;
+  }
+}
+
+async function toSignedStorageUrl(urlValue: string | null | undefined, expiresInSeconds = 60 * 60 * 24 * 365): Promise<string | null> {
+  const raw = String(urlValue || '').trim();
+  if (!raw) return null;
+
+  const parsed = parseStorageObjectFromUrl(raw);
+  if (!parsed) return raw;
+
+  try {
+    const { data, error } = await supabaseAdmin.storage.from(parsed.bucket).createSignedUrl(parsed.path, expiresInSeconds);
+    if (error) return raw;
+    return data?.signedUrl || raw;
+  } catch {
+    return raw;
+  }
+}
+
 function shouldFallbackToAdminRead(error: { message?: string; code?: string; status?: number } | null) {
   if (!error) return false;
   const message = String(error.message || '').toLowerCase();
@@ -99,7 +139,7 @@ export async function updateDepartment(
     name_fr?: string;
     name_ar?: string;
     icon?: string;
-    image_url?: string;
+    image_url?: string | null;
     sort_order?: number;
     is_active?: boolean;
   }
@@ -528,7 +568,17 @@ export async function getBrands(onlyActive = false) {
   if (onlyActive) query = query.eq('is_active', true);
   const { data, error } = await query;
   if (error) throw error;
-  return data || [];
+  const rows = data || [];
+  if (rows.length === 0) return rows;
+
+  // Make logos load even if storage bucket is private by returning signed URLs.
+  const signed = await Promise.all(
+    rows.map(async (row: any) => ({
+      ...row,
+      logo_url: await toSignedStorageUrl(row?.logo_url),
+    }))
+  );
+  return signed;
 }
 
 export async function getBrandById(id: string) {
@@ -565,7 +615,7 @@ export async function updateBrand(
   data: {
     name?: string;
     slug?: string;
-    logo_url?: string;
+    logo_url?: string | null;
     is_active?: boolean;
   }
 ) {
@@ -1013,6 +1063,20 @@ async function ensureProductImagesBucket() {
 
     if (createError && !String(createError.message || '').toLowerCase().includes('already exists')) {
       throw createError;
+    }
+  } else if (bucket.public !== true) {
+    // If the bucket already exists but is private, public URLs from getPublicUrl() will not load in the browser.
+    // Use a best-effort update to flip it to public.
+    try {
+      const storageAny: any = supabaseAdmin.storage as any;
+      if (typeof storageAny.updateBucket === 'function') {
+        const { error: updateError } = await storageAny.updateBucket(PRODUCT_IMAGES_BUCKET, {
+          public: true,
+        });
+        if (updateError) throw updateError;
+      }
+    } catch (error) {
+      console.warn('Failed to update bucket visibility:', error);
     }
   }
 
@@ -1743,11 +1807,30 @@ export async function deleteHomepageBanner(id: string) {
 export async function getMarqueeBrands() {
   const { data, error } = await supabaseAnon
     .from('marquee_brands')
-    .select('*')
+    .select(`
+      *,
+      brands(id, name, slug, logo_url)
+    `)
     .eq('is_active', true)
     .order('sort_order');
   if (error) throw error;
-  return data || [];
+  const rows = data || [];
+  if (rows.length === 0) return rows;
+
+  const signed = await Promise.all(
+    rows.map(async (row: any) => {
+      const brand = row?.brands || null;
+      const signedRowLogo = await toSignedStorageUrl(row?.logo_url);
+      const signedBrandLogo = brand ? await toSignedStorageUrl(brand?.logo_url) : null;
+      return {
+        ...row,
+        logo_url: signedRowLogo,
+        brands: brand ? { ...brand, logo_url: signedBrandLogo } : brand,
+      };
+    })
+  );
+
+  return signed;
 }
 
 export async function createMarqueeBrand(data: {

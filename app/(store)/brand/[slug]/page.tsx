@@ -3,6 +3,7 @@ import { notFound } from "next/navigation"
 import { ArrowRight, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ProductCard } from "@/components/store/product-card"
+import { BrandLogo } from "@/components/store/brand-logo"
 import type { Product } from "@/lib/data"
 import { getBrands, getProducts } from "@/app/(store)/actions"
 
@@ -92,9 +93,14 @@ export default async function BrandPage({
 
       <div className="mb-8 rounded-2xl border border-border bg-card/65 p-5">
         <div className="flex items-center gap-4">
-          {brand.logo_url ? (
-            <img src={brand.logo_url} alt={brand.name} className="h-12 w-24 object-contain grayscale" />
-          ) : null}
+          <BrandLogo
+            src={brand.logo_url}
+            alt={brand.name}
+            width={96}
+            height={48}
+            unoptimized
+            imgClassName="grayscale"
+          />
           <div>
             <h1 className="text-2xl font-bold text-foreground sm:text-3xl">{brand.name}</h1>
             <p className="mt-1 text-sm text-muted-foreground">

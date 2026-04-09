@@ -68,6 +68,37 @@ export async function createBrandAdmin(data: {
   }
 }
 
+export async function updateBrandAdmin(
+  id: string,
+  data: {
+    name?: string;
+    slug?: string;
+    logo_url?: string | null;
+    is_active?: boolean;
+  }
+) {
+  if (!(await isAdminAuthenticated())) {
+    return { error: 'Unauthorized' };
+  }
+
+  try {
+    const result = await repo.updateBrand(id, {
+      name: data.name,
+      slug: data.slug,
+      logo_url: data.logo_url,
+      is_active: data.is_active,
+    });
+
+    revalidatePath('/admin/content');
+    revalidatePath('/brands');
+    revalidatePath('/');
+    return { success: true, brand: result };
+  } catch (error: any) {
+    console.error('Failed to update brand:', error);
+    return { error: error.message };
+  }
+}
+
 export async function uploadAdminContentImage(formData: FormData) {
   if (!(await isAdminAuthenticated())) {
     return { error: 'Unauthorized' };

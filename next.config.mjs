@@ -5,6 +5,11 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
+    domains: [
+      "upload.wikimedia.org",
+      "cdn.shopify.com",
+      "logo.clearbit.com",
+    ],
     remotePatterns: [
       {
         protocol: "https",
@@ -17,6 +22,18 @@ const nextConfig = {
       {
         protocol: "https",
         hostname: "*.supabase.co",
+      },
+      {
+        protocol: "https",
+        hostname: "upload.wikimedia.org",
+      },
+      {
+        protocol: "https",
+        hostname: "cdn.shopify.com",
+      },
+      {
+        protocol: "https",
+        hostname: "logo.clearbit.com",
       },
     ],
     unoptimized: true,

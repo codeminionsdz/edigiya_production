@@ -29,6 +29,7 @@ import {
   addBrandToMarquee,
   addAllBrandsToMarquee,
   createBrandAdmin,
+  updateBrandAdmin,
   createHomePageBannerAdmin,
   deleteHomePageBannerAdmin,
   getHomePageBannersAdmin,
@@ -38,6 +39,7 @@ import {
   uploadAdminContentImage,
   updateMarqueeBrandOrder,
 } from "@/app/admin/content/actions"
+import { BrandLogo } from "@/components/store/brand-logo"
 import { toast } from "sonner"
 
 type MarqueeBrand = {
@@ -68,6 +70,7 @@ export default function AdminContentPage() {
   const [loading, setLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isBrandDialogOpen, setIsBrandDialogOpen] = useState(false)
+  const [isEditBrandDialogOpen, setIsEditBrandDialogOpen] = useState(false)
   const [selectedBrandId, setSelectedBrandId] = useState("")
   const [logoUrl, setLogoUrl] = useState("")
   const [brandName, setBrandName] = useState("")
@@ -76,6 +79,10 @@ export default function AdminContentPage() {
   const [brandIsActive, setBrandIsActive] = useState(true)
   const [isUploadingMarqueeLogo, setIsUploadingMarqueeLogo] = useState(false)
   const [isUploadingBrandLogo, setIsUploadingBrandLogo] = useState(false)
+  const [editBrandId, setEditBrandId] = useState("")
+  const [editBrandLogoUrl, setEditBrandLogoUrl] = useState("")
+  const [isUploadingEditBrandLogo, setIsUploadingEditBrandLogo] = useState(false)
+  const [isSavingEditBrand, setIsSavingEditBrand] = useState(false)
   const [homeBanners, setHomeBanners] = useState<any[]>([])
   const [isHeroDialogOpen, setIsHeroDialogOpen] = useState(false)
   const [heroTitleFr, setHeroTitleFr] = useState("")
@@ -282,6 +289,61 @@ export default function AdminContentPage() {
     } finally {
       event.target.value = ""
       setIsUploadingBrandLogo(false)
+    }
+  }
+
+  const handleUploadEditBrandLogo = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setIsUploadingEditBrandLogo(true)
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      const result = await uploadAdminContentImage(formData)
+
+      if (result && typeof result === "object" && "error" in result) {
+        throw new Error(String(result.error))
+      }
+
+      if (result && typeof result === "object" && "url" in result) {
+        setEditBrandLogoUrl(String(result.url))
+        toast.success("Logo telecharge avec succes")
+      } else {
+        throw new Error("Upload impossible")
+      }
+    } catch (error: any) {
+      toast.error(error?.message || "Echec du telechargement du logo")
+    } finally {
+      event.target.value = ""
+      setIsUploadingEditBrandLogo(false)
+    }
+  }
+
+  const handleSaveEditBrandLogo = async () => {
+    if (!editBrandId) {
+      toast.error("Veuillez selectionner une marque")
+      return
+    }
+
+    setIsSavingEditBrand(true)
+    try {
+      const payloadLogo = editBrandLogoUrl.trim()
+      const result = await updateBrandAdmin(editBrandId, {
+        logo_url: payloadLogo ? payloadLogo : null,
+      })
+      if (result && typeof result === "object" && "error" in result) {
+        throw new Error(String(result.error))
+      }
+      toast.success("Logo mis a jour")
+      setIsEditBrandDialogOpen(false)
+      setEditBrandId("")
+      setEditBrandLogoUrl("")
+      loadData()
+    } catch (error: any) {
+      toast.error(error?.message || "Echec de la mise a jour du logo")
+    } finally {
+      setIsSavingEditBrand(false)
     }
   }
 
@@ -507,6 +569,86 @@ export default function AdminContentPage() {
               >
                 Ajouter toutes
               </Button>
+              <Dialog open={isEditBrandDialogOpen} onOpenChange={setIsEditBrandDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" variant="outline">
+                    Modifier logo
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Modifier le logo d'une marque</DialogTitle>
+                    <DialogDescription>
+                      Mettez a jour le champ <code>brands.logo_url</code>.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label>Marque</Label>
+                      <Select
+                        value={editBrandId}
+                        onValueChange={(value) => {
+                          setEditBrandId(value)
+                          const brand = allBrands.find((row) => row.id === value)
+                          setEditBrandLogoUrl(String(brand?.logo_url || ""))
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selectionnez une marque" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {allBrands.map((brand) => (
+                            <SelectItem key={brand.id} value={brand.id}>
+                              {brand.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Logo URL (optionnel)</Label>
+                      <Input
+                        placeholder="https://..."
+                        value={editBrandLogoUrl}
+                        onChange={(e) => setEditBrandLogoUrl(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Logo depuis l'appareil</Label>
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleUploadEditBrandLogo}
+                        disabled={isUploadingEditBrandLogo || isSavingEditBrand}
+                      />
+                      {isUploadingEditBrandLogo && (
+                        <p className="text-xs text-muted-foreground">Telechargement en cours...</p>
+                      )}
+                      {editBrandLogoUrl ? (
+                        <div className="rounded-md border border-border bg-card p-2">
+                          <BrandLogo
+                            src={editBrandLogoUrl}
+                            alt="Apercu logo"
+                            width={220}
+                            height={80}
+                            imgClassName="h-full w-full object-contain"
+                          />
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" onClick={() => setIsEditBrandDialogOpen(false)} disabled={isSavingEditBrand}>
+                      Annuler
+                    </Button>
+                    <Button onClick={handleSaveEditBrandLogo} disabled={isSavingEditBrand || isUploadingEditBrandLogo}>
+                      {isSavingEditBrand ? "Enregistrement..." : "Enregistrer"}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
               <Dialog open={isBrandDialogOpen} onOpenChange={setIsBrandDialogOpen}>
                 <DialogTrigger asChild>
                   <Button size="sm" variant="outline">
@@ -705,15 +847,14 @@ export default function AdminContentPage() {
                         </Button>
                       </div>
                       <div className="flex h-16 w-24 items-center justify-center rounded-lg border border-border bg-white p-2">
-                        {marqueeBrand.logo_url || marqueeBrand.brands.logo_url ? (
-                          <img
-                            src={marqueeBrand.logo_url || marqueeBrand.brands.logo_url!}
-                            alt={marqueeBrand.brands.name}
-                            className="max-h-full max-w-full object-contain"
-                          />
-                        ) : (
-                          <ImageIcon className="h-8 w-8 text-muted-foreground" />
-                        )}
+                        <BrandLogo
+                          src={marqueeBrand.logo_url || marqueeBrand.brands.logo_url}
+                          alt={marqueeBrand.brands.name}
+                          width={96}
+                          height={64}
+                          unoptimized
+                          imgClassName="h-full w-full object-contain"
+                        />
                       </div>
                       <div>
                         <p className="text-sm font-semibold text-foreground">
@@ -740,6 +881,20 @@ export default function AdminContentPage() {
                           handleToggleActive(marqueeBrand.id, marqueeBrand.is_active)
                         }
                       />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => {
+                          const brand = allBrands.find((row) => row.id === marqueeBrand.brands.id)
+                          setEditBrandId(marqueeBrand.brands.id)
+                          setEditBrandLogoUrl(String(brand?.logo_url || marqueeBrand.brands.logo_url || ""))
+                          setIsEditBrandDialogOpen(true)
+                        }}
+                        title="Modifier logo"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"

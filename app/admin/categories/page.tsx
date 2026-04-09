@@ -65,6 +65,7 @@ interface Department {
   name_fr: string
   name_ar: string
   image_url?: string | null
+  is_active?: boolean
 }
 
 interface CategoryNode {
@@ -140,8 +141,11 @@ export default function CategoriesPage() {
   const [editorCategoryId, setEditorCategoryId] = useState<string | null>(null)
   const [editorState, setEditorState] = useState<EditorState>(initialEditorState)
   const [departmentEditorOpen, setDepartmentEditorOpen] = useState(false)
+  const [departmentEditorMode, setDepartmentEditorMode] = useState<"create" | "edit">("create")
+  const [editingDepartmentId, setEditingDepartmentId] = useState<string | null>(null)
   const [departmentEditorState, setDepartmentEditorState] =
     useState<DepartmentEditorState>(initialDepartmentEditorState)
+  const [departmentDeleteOpen, setDepartmentDeleteOpen] = useState(false)
 
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<CategoryNode | null>(null)
@@ -208,8 +212,32 @@ export default function CategoriesPage() {
   }
 
   const openDepartmentDialog = () => {
+    setDepartmentEditorMode("create")
+    setEditingDepartmentId(null)
     setDepartmentEditorState(initialDepartmentEditorState())
     setDepartmentEditorOpen(true)
+  }
+
+  const openEditDepartmentDialog = () => {
+    if (!selectedDepartmentId) return
+    const department = departments.find((row) => row.id === selectedDepartmentId)
+    if (!department) return
+
+    setDepartmentEditorMode("edit")
+    setEditingDepartmentId(department.id)
+    setDepartmentEditorState({
+      name_fr: String(department.name_fr || ""),
+      name_ar: String(department.name_ar || ""),
+      slug: String(department.slug || ""),
+      image_url: String(department.image_url || ""),
+      is_active: Boolean(department.is_active ?? true),
+    })
+    setDepartmentEditorOpen(true)
+  }
+
+  const requestDeleteDepartment = () => {
+    if (!selectedDepartmentId) return
+    setDepartmentDeleteOpen(true)
   }
 
   const handleDepartmentImageUpload = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -336,6 +364,127 @@ export default function CategoriesPage() {
       })
     } finally {
       setIsCreatingDepartment(false)
+    }
+  }
+
+  const handleUpdateDepartment = async () => {
+    if (!editingDepartmentId) return
+
+    if (!departmentEditorState.name_fr.trim() || !departmentEditorState.name_ar.trim() || !departmentEditorState.slug.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Validation",
+        description: "name_fr, name_ar et slug sont obligatoires.",
+      })
+      return
+    }
+
+    const normalizedSlug = slugify(departmentEditorState.slug)
+    const alreadyExists = departments.some(
+      (department) => department.slug === normalizedSlug && department.id !== editingDepartmentId
+    )
+    if (alreadyExists) {
+      toast({
+        variant: "destructive",
+        title: "Slug deja utilise",
+        description: "Ce slug existe deja pour un autre departement.",
+      })
+      return
+    }
+
+    setIsCreatingDepartment(true)
+
+    try {
+      const response = await fetch(`/api/admin/departments/${encodeURIComponent(editingDepartmentId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slug: normalizedSlug,
+          name_fr: departmentEditorState.name_fr.trim(),
+          name_ar: departmentEditorState.name_ar.trim(),
+          image_url: departmentEditorState.image_url.trim() || null,
+          is_active: departmentEditorState.is_active,
+        }),
+      })
+
+      const json = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(String(json?.error || "Impossible de mettre a jour le departement."))
+      }
+
+      // Instant UI update (no reload)
+      setDepartments((prev) =>
+        prev.map((d) =>
+          d.id === editingDepartmentId
+            ? {
+                ...d,
+                slug: normalizedSlug,
+                name_fr: departmentEditorState.name_fr.trim(),
+                name_ar: departmentEditorState.name_ar.trim(),
+                image_url: departmentEditorState.image_url.trim() || null,
+                is_active: departmentEditorState.is_active,
+              }
+            : d
+        )
+      )
+      setSelectedDepartmentId(editingDepartmentId)
+
+      setDepartmentEditorOpen(false)
+      toast({
+        title: "Departement mis a jour",
+        description: "Les informations ont ete enregistrees.",
+      })
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: error?.message || "Impossible de mettre a jour le departement.",
+      })
+    } finally {
+      setIsCreatingDepartment(false)
+    }
+  }
+
+  const handleDeleteDepartment = async () => {
+    if (!selectedDepartmentId) return
+
+    setIsSaving(true)
+    try {
+      const response = await fetch(`/api/admin/departments/${encodeURIComponent(selectedDepartmentId)}`, {
+        method: "DELETE",
+      })
+
+      const json = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(String(json?.error || "Impossible de supprimer le departement."))
+      }
+
+      const deletedId = selectedDepartmentId
+      setDepartments((prev) => prev.filter((d) => d.id !== deletedId))
+
+      // Pick a new selection (if any) and refresh tree
+      const remaining = departments.filter((d) => d.id !== deletedId)
+      const nextId = remaining[0]?.id || ""
+      setSelectedDepartmentId(nextId)
+      if (nextId) {
+        await refreshTree(nextId)
+      } else {
+        setTree([])
+      }
+
+      toast({
+        title: "Departement supprime",
+        description: "Le departement a ete supprime avec succes.",
+      })
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Erreur suppression",
+        description: error?.message || "Impossible de supprimer le departement.",
+      })
+    } finally {
+      setDepartmentDeleteOpen(false)
+      setIsSaving(false)
     }
   }
 
@@ -672,18 +821,42 @@ export default function CategoriesPage() {
         <CardContent className="space-y-4">
           <div className="max-w-sm">
             <Label>Departement</Label>
-            <Select value={selectedDepartmentId} onValueChange={setSelectedDepartmentId} disabled={isSaving}>
-              <SelectTrigger className="mt-1.5">
-                <SelectValue placeholder="Selectionner un departement" />
-              </SelectTrigger>
-              <SelectContent>
-                {departments.map((department) => (
-                  <SelectItem key={department.id} value={department.id}>
-                    {department.name_fr}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="mt-1.5 flex items-center gap-2">
+              <Select value={selectedDepartmentId} onValueChange={setSelectedDepartmentId} disabled={isSaving}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selectionner un departement" />
+                </SelectTrigger>
+                <SelectContent>
+                  {departments.map((department) => (
+                    <SelectItem key={department.id} value={department.id}>
+                      {department.name_fr}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-10 w-10"
+                onClick={openEditDepartmentDialog}
+                disabled={!selectedDepartmentId || isSaving || isCreatingDepartment}
+                title="Modifier le departement"
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-10 w-10 text-destructive"
+                onClick={requestDeleteDepartment}
+                disabled={!selectedDepartmentId || isSaving || isCreatingDepartment}
+                title="Supprimer le departement"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
           {isLoading ? (
@@ -705,9 +878,11 @@ export default function CategoriesPage() {
       <Dialog open={departmentEditorOpen} onOpenChange={setDepartmentEditorOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Ajouter un departement</DialogTitle>
+            <DialogTitle>{departmentEditorMode === "edit" ? "Modifier le departement" : "Ajouter un departement"}</DialogTitle>
             <DialogDescription>
-              Creez un departement (section principale), puis ajoutez les categories et sous-categories.
+              {departmentEditorMode === "edit"
+                ? "Mettez a jour le nom, le slug ou l'image du departement."
+                : "Creez un departement (section principale), puis ajoutez les categories et sous-categories."}
             </DialogDescription>
           </DialogHeader>
 
@@ -816,15 +991,33 @@ export default function CategoriesPage() {
             </Button>
             <Button
               type="button"
-              onClick={handleCreateDepartment}
+              onClick={departmentEditorMode === "edit" ? handleUpdateDepartment : handleCreateDepartment}
               disabled={isCreatingDepartment || isUploadingDepartmentImage}
             >
               {isCreatingDepartment && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Creer
+              {departmentEditorMode === "edit" ? "Enregistrer" : "Creer"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={departmentDeleteOpen} onOpenChange={setDepartmentDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer le departement ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action peut supprimer des categories et des produits associes. Si des produits sont lies a des commandes,
+              la suppression sera refusee. Dans ce cas, desactivez le departement.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSaving}>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteDepartment} disabled={isSaving}>
+              {isSaving ? "Suppression..." : "Supprimer"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog open={editorOpen} onOpenChange={setEditorOpen}>
         <DialogContent>

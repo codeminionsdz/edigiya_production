@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/command"
 import { useLocale } from "@/lib/locale-context"
 import { getBrands, getMegaMenuTaxonomy, getProducts } from "@/app/(store)/actions"
+import { BrandLogo } from "@/components/store/brand-logo"
 
 interface SearchDialogProps {
   open: boolean
@@ -355,9 +356,14 @@ export function SearchDialog({ open, onOpenChange }: SearchDialogProps) {
                       >
                         <div className="flex min-w-0 items-center gap-3">
                           <div className="flex h-9 w-16 shrink-0 items-center justify-center rounded-md border border-border bg-muted/30 px-2">
-                            {brand.logo_url ? (
-                              <img src={brand.logo_url} alt={brand.name} className="max-h-6 w-full object-contain" />
-                            ) : null}
+                            <BrandLogo
+                              src={brand.logo_url}
+                              alt={brand.name}
+                              width={64}
+                              height={24}
+                              unoptimized
+                              imgClassName="h-full w-full object-contain"
+                            />
                           </div>
                           <span className="truncate text-sm">{brand.name}</span>
                         </div>

@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { getBrands } from "@/app/(store)/actions"
+import { getMarqueeBrands } from "@/app/(store)/actions"
+import { BrandLogoBackground } from "@/components/store/brand-logo"
 
 type BrandItem = {
   id: string
@@ -14,10 +15,10 @@ type BrandItem = {
 }
 
 const mockBrands: BrandItem[] = [
-  { id: "mock-on", name: "Optimum Nutrition", slug: "optimum-nutrition", logo_url: "/brands/on.png" },
-  { id: "mock-myprotein", name: "MyProtein", slug: "myprotein", logo_url: "/brands/myprotein.png" },
-  { id: "mock-dymatize", name: "Dymatize", slug: "dymatize", logo_url: "/brands/dymatize.png" },
-  { id: "mock-muscletech", name: "MuscleTech", slug: "muscletech", logo_url: "/brands/muscletech.png" },
+  { id: "mock-on", name: "Optimum Nutrition", slug: "optimum-nutrition", logo_url: null },
+  { id: "mock-myprotein", name: "MyProtein", slug: "myprotein", logo_url: null },
+  { id: "mock-dymatize", name: "Dymatize", slug: "dymatize", logo_url: null },
+  { id: "mock-muscletech", name: "MuscleTech", slug: "muscletech", logo_url: null },
 ]
 
 function slugifyBrandName(name: string) {
@@ -41,17 +42,23 @@ export function BrandMarquee() {
     async function loadBrands() {
       setIsLoading(true)
       try {
-        const rows = await getBrands()
+        const rows = await getMarqueeBrands()
         if (!active) return
 
         const normalized = (Array.isArray(rows) ? rows : [])
+          .map((row: any) => {
+            const brand = row?.brands || {}
+            const name = String(brand?.name || "")
+            const slug = String(brand?.slug || slugifyBrandName(name))
+            const logoUrl = row?.logo_url || brand?.logo_url || null
+            return {
+              id: String(row?.id || brand?.id || ""),
+              name,
+              slug,
+              logo_url: logoUrl ? String(logoUrl) : null,
+            }
+          })
           .filter((brand: any) => Boolean(brand?.id && brand?.name))
-          .map((brand: any) => ({
-            id: String(brand.id),
-            name: String(brand.name),
-            slug: String(brand.slug || slugifyBrandName(String(brand.name))),
-            logo_url: brand.logo_url ? String(brand.logo_url) : null,
-          }))
 
         if (normalized.length > 0) {
           setBrands(normalized)
@@ -146,17 +153,13 @@ export function BrandMarquee() {
                     href={`/brand/${encodeURIComponent(brand.slug)}`}
                     className="group relative flex h-24 min-w-[68%] snap-start items-center justify-center rounded-2xl border border-border bg-background/60 px-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/70 hover:shadow-[0_14px_34px_-22px_rgba(255,214,0,0.85)] sm:min-w-[42%] lg:min-w-[240px]"
                   >
-                    {brand.logo_url ? (
-                      <img
-                        src={brand.logo_url}
-                        alt={brand.name}
-                        className="max-h-10 w-full object-contain grayscale brightness-75 opacity-85 transition-all duration-300 group-hover:grayscale-0 group-hover:brightness-100 group-hover:opacity-100 group-hover:scale-[1.03]"
-                        loading="lazy"
-                        onError={(event) => {
-                          event.currentTarget.style.display = "none"
-                        }}
-                      />
-                    ) : null}
+                    <BrandLogoBackground
+                      src={brand.logo_url}
+                      width={240}
+                      height={96}
+                      className="absolute inset-0 opacity-80 transition-opacity duration-300 group-hover:opacity-100"
+                    />
+                    <span className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/30 to-transparent" />
                     <span className="absolute bottom-2.5 left-1/2 max-w-[85%] -translate-x-1/2 truncate text-xs font-semibold tracking-wide text-muted-foreground transition-colors group-hover:text-primary">
                       {brand.name}
                     </span>

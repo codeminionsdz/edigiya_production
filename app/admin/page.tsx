@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button"
 import { DashboardCharts } from "./dashboard-charts"
 import { MarketCharts } from "./market-charts"
 import { RealtimeVisitors } from "@/components/admin/realtime-visitors"
-import { NotificationManager } from "@/components/admin/notification-manager"
 import { adminGetOrders, adminGetProducts, adminGetOrderItemsAnalytics, adminGetWilayas } from "@/app/admin/actions"
 
 function formatPrice(price: number) {
@@ -222,9 +221,6 @@ export default async function AdminDashboard() {
             Bienvenue dans le panneau d{"'"}administration de Nutrition Store
           </p>
         </div>
-
-        {/* Notification Manager */}
-        <NotificationManager />
 
         {/* KPIs */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
