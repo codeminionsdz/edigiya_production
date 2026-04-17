@@ -25,6 +25,7 @@ import { SearchDialog } from "./search-dialog"
 import { useLocale } from "@/lib/locale-context"
 import { useCart } from "@/lib/cart-store"
 import { getCategories, getMegaMenuTaxonomy } from "@/app/(store)/actions"
+import { getNavbarItems, getCustomPages } from "@/app/admin/navbar/actions"
 
 interface MegaMenuSubcategory {
   id: string
@@ -58,6 +59,18 @@ interface MobileNavCategory {
   image?: string | null
 }
 
+interface NavbarItem {
+  id: string
+  label_ar: string
+  label_fr: string
+  url: string
+  sort_order: number
+  is_active: boolean
+  type: string
+  target: string
+  icon_name?: string
+}
+
 function DeptIcon({ className }: { name?: string | null; slug?: string; className?: string }) {
   return <Dumbbell className={className} />
 }
@@ -80,6 +93,9 @@ export function StoreNavbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [mobileCategories, setMobileCategories] = useState<MobileNavCategory[]>([])
   const [mobileCategoriesLoading, setMobileCategoriesLoading] = useState(true)
+  const [navbarItems, setNavbarItems] = useState<NavbarItem[]>([])
+  const [navbarItemsLoading, setNavbarItemsLoading] = useState(true)
+  const [customPages, setCustomPages] = useState<Array<{ id: string; slug: string; title_ar: string; title_fr: string; is_navbar_visible: boolean }>>([])
 
   const megaRef = useRef<HTMLDivElement>(null)
 
@@ -153,6 +169,61 @@ export function StoreNavbar() {
     }
 
     void loadMobileCategories()
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  useEffect(() => {
+    let active = true
+
+    async function loadNavbarItems() {
+      setNavbarItemsLoading(true)
+      try {
+        const result = await getNavbarItems()
+        if (!active) return
+        const items = Array.isArray(result.data) ? result.data : []
+        setNavbarItems(items)
+      } catch (error) {
+        console.error("Failed to load navbar items:", error)
+        if (active) {
+          setNavbarItems([])
+        }
+      } finally {
+        if (active) {
+          setNavbarItemsLoading(false)
+        }
+      }
+    }
+
+    void loadNavbarItems()
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  useEffect(() => {
+    let active = true
+
+    async function loadCustomPages() {
+      try {
+        const result = await getCustomPages()
+        if (!active) return
+        const pages = Array.isArray(result.data) ? result.data : []
+        // Filter only pages that should be visible in navbar
+        const visiblePages = pages.filter((page: any) => page.is_navbar_visible === true)
+        setCustomPages(visiblePages)
+      } catch (error) {
+        console.error("Failed to load custom pages:", error)
+        if (active) {
+          setCustomPages([])
+        }
+      }
+    }
+
+    void loadCustomPages()
 
     return () => {
       active = false
@@ -363,6 +434,37 @@ export function StoreNavbar() {
             <Link href="/promotions" className="rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-muted">
               {t.nav.deals}
             </Link>
+
+            {/* Render navbar items from database - Scrollable Container */}
+            {navbarItems.length > 0 && (
+              <div className="flex max-w-xs flex-shrink-0 gap-0.5 overflow-x-auto scrollbar-hide xl:max-w-sm">
+                {navbarItems.map((item) => (
+                  <a
+                    key={item.id}
+                    href={item.url}
+                    target={item.target}
+                    className="rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-muted whitespace-nowrap flex-shrink-0"
+                  >
+                    {labelByLocale(locale, item.label_fr, item.label_ar)}
+                  </a>
+                ))}
+              </div>
+            )}
+
+            {/* Render custom pages that should appear in navbar */}
+            {customPages.length > 0 && (
+              <div className="flex max-w-xs flex-shrink-0 gap-0.5 overflow-x-auto scrollbar-hide xl:max-w-sm">
+                {customPages.map((page) => (
+                  <a
+                    key={page.id}
+                    href={`/pages/${page.slug}`}
+                    className="rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-muted whitespace-nowrap flex-shrink-0"
+                  >
+                    {labelByLocale(locale, page.title_fr, page.title_ar)}
+                  </a>
+                ))}
+              </div>
+            )}
           </nav>
 
           <div className="flex max-w-md flex-1 items-center gap-2">
@@ -470,6 +572,35 @@ export function StoreNavbar() {
                 >
                   {t.nav.deals}
                 </Link>
+
+                {/* Render navbar items from database in mobile menu */}
+                {navbarItems.map((item, index) => (
+                  <a
+                    key={item.id}
+                    href={item.url}
+                    target={item.target}
+                    className={`block px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-primary/10 hover:text-primary ${
+                      index !== navbarItems.length - 1 ? "border-b border-border/70" : ""
+                    }`}
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    {labelByLocale(locale, item.label_fr, item.label_ar)}
+                  </a>
+                ))}
+
+                {/* Render custom pages that should appear in navbar */}
+                {customPages.map((page, pageIndex) => (
+                  <a
+                    key={page.id}
+                    href={`/pages/${page.slug}`}
+                    className={`block px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-primary/10 hover:text-primary ${
+                      navbarItems.length + pageIndex !== navbarItems.length + customPages.length - 1 ? "border-b border-border/70" : ""
+                    }`}
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    {labelByLocale(locale, page.title_fr, page.title_ar)}
+                  </a>
+                ))}
               </div>
             </div>
 

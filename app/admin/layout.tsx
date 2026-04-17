@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation"
 import {
   LayoutDashboard, Package, ShoppingCart, Users, Truck,
   FileText, Settings, Menu, X, LogOut,
-  Bell, Search, Tags, MessageSquare, BarChart3,
+  Bell, Search, Tags, MessageSquare, BarChart3, Navigation, Grid3x3, Layers,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -35,12 +35,15 @@ function LogoutButton() {
 const sidebarLinks = [
   { href: "/admin", icon: LayoutDashboard, label: "Tableau de bord" },
   { href: "/admin/products", icon: Package, label: "Produits" },
+  { href: "/admin/products/multi-assign", icon: Layers, label: "Assign Categories/Depts" },
   { href: "/admin/categories", icon: Tags, label: "Catégories" },
   { href: "/admin/orders", icon: ShoppingCart, label: "Commandes" },
   { href: "/admin/analytics", icon: BarChart3, label: "Analyses" },
   { href: "/admin/customers", icon: Users, label: "Clients" },
   { href: "/admin/messages", icon: MessageSquare, label: "Messages" },
   { href: "/admin/shipping", icon: Truck, label: "Livraison" },
+  { href: "/admin/navbar", icon: Navigation, label: "Navbar" },
+  { href: "/admin/navbar/products", icon: Grid3x3, label: "Page Products" },
   { href: "/admin/content", icon: FileText, label: "Contenu" },
   { href: "/admin/settings", icon: Settings, label: "Parametres" },
 ]
