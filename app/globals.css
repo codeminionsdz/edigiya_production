@@ -10,8 +10,8 @@
     --card-foreground: 0 0% 7%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 7%;
-    --primary: 51 100% 50%;
-    --primary-foreground: 0 0% 6%;
+    --primary: 126 58% 40%;
+    --primary-foreground: 0 0% 100%;
     --secondary: 0 0% 97%;
     --secondary-foreground: 0 0% 7%;
     --muted: 0 0% 97%;
@@ -22,7 +22,7 @@
     --destructive-foreground: 0 0% 100%;
     --border: 0 0% 90%;
     --input: 0 0% 90%;
-    --ring: 51 100% 50%;
+    --ring: 126 58% 40%;
     --chart-1: 51 100% 50%;
     --chart-2: 0 0% 33%;
     --chart-3: 36 93% 58%;
@@ -50,8 +50,8 @@
     --card-foreground: 0 0% 100%;
     --popover: 0 0% 10%;
     --popover-foreground: 0 0% 100%;
-    --primary: 51 100% 50%;
-    --primary-foreground: 0 0% 6%;
+    --primary: 126 58% 48%;
+    --primary-foreground: 0 0% 100%;
     --secondary: 0 0% 14%;
     --secondary-foreground: 51 100% 50%;
     --muted: 0 0% 14%;
@@ -62,7 +62,7 @@
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 16%;
     --input: 0 0% 16%;
-    --ring: 51 100% 50%;
+    --ring: 126 58% 48%;
     --chart-1: 51 100% 50%;
     --chart-2: 0 0% 76%;
     --chart-3: 36 93% 58%;
@@ -87,7 +87,7 @@
   * {
     @apply border-border;
     transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
-    transition-duration: 260ms;
+    transition-duration: 180ms;
     transition-timing-function: ease;
   }
   body {
@@ -95,9 +95,7 @@
     color-scheme: light;
   }
 
-  a {
-    @apply text-primary transition-colors hover:text-primary/90;
-  }
+  a { @apply transition-colors; }
 }
 
 .dark body {
@@ -160,4 +158,69 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground));
+}
+
+/* Product purchase CTA: a clear, high-confidence action on every viewport. */
+main a.mt-4.w-full > button {
+  position: relative;
+  min-height: 64px;
+  overflow: hidden;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #2ca53a 0%, #16852d 100%);
+  box-shadow: 0 12px 24px -12px rgba(22, 133, 45, 0.8);
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+  transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
+}
+
+main a.mt-4.w-full > button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 34%;
+  background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.28), transparent);
+  transform: translateX(-180%) skewX(-18deg);
+  transition: transform 700ms ease;
+}
+
+main a.mt-4.w-full > button:hover {
+  filter: saturate(1.08);
+  transform: translateY(-2px);
+  box-shadow: 0 16px 28px -12px rgba(22, 133, 45, 0.9);
+}
+
+main a.mt-4.w-full > button:hover::before {
+  transform: translateX(420%) skewX(-18deg);
+}
+
+main a.mt-4.w-full > button:active {
+  transform: translateY(0) scale(0.985);
+}
+
+main > div.fixed.inset-x-0.bottom-0 {
+  padding-inline: max(0.75rem, env(safe-area-inset-left)) max(0.75rem, env(safe-area-inset-right));
+}
+
+main > div.fixed.inset-x-0.bottom-0 a {
+  flex: 1;
+}
+
+main > div.fixed.inset-x-0.bottom-0 a > button {
+  min-height: 52px;
+  width: 100%;
+  border-radius: 15px;
+  box-shadow: 0 8px 18px -10px rgba(22, 133, 45, 0.8);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+@media (max-width: 380px) {
+  main > div.fixed.inset-x-0.bottom-0 {
+    padding-inline: 0.65rem;
+  }
+
+  main > div.fixed.inset-x-0.bottom-0 a > button {
+    padding-inline: 0.8rem;
+    font-size: 0.84rem;
+  }
 }

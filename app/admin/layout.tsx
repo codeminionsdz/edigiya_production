@@ -5,12 +5,11 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 /* eslint-disable @next/next/no-img-element */
 import {
-  LayoutDashboard, Package, ShoppingCart, Users, Truck,
-  FileText, Settings, Menu, X, LogOut,
-  Bell, Search, Tags, MessageSquare, BarChart3, Navigation, Grid3x3, Layers,
+  LayoutDashboard, Package, ShoppingCart, Users,
+  Settings, Menu, X, LogOut,
+  Tags, MessageSquare, BarChart3,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { adminGetOrders, logoutAdmin } from "@/app/admin/actions"
 
@@ -35,16 +34,11 @@ function LogoutButton() {
 const sidebarLinks = [
   { href: "/admin", icon: LayoutDashboard, label: "Tableau de bord" },
   { href: "/admin/products", icon: Package, label: "Produits" },
-  { href: "/admin/products/multi-assign", icon: Layers, label: "Assign Categories/Depts" },
   { href: "/admin/categories", icon: Tags, label: "Catégories" },
   { href: "/admin/orders", icon: ShoppingCart, label: "Commandes" },
   { href: "/admin/analytics", icon: BarChart3, label: "Analyses" },
   { href: "/admin/customers", icon: Users, label: "Clients" },
   { href: "/admin/messages", icon: MessageSquare, label: "Messages" },
-  { href: "/admin/shipping", icon: Truck, label: "Livraison" },
-  { href: "/admin/navbar", icon: Navigation, label: "Navbar" },
-  { href: "/admin/navbar/products", icon: Grid3x3, label: "Page Products" },
-  { href: "/admin/content", icon: FileText, label: "Contenu" },
   { href: "/admin/settings", icon: Settings, label: "Parametres" },
 ]
 
@@ -101,14 +95,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="flex h-16 items-center justify-between border-b border-border px-4">
           <Link href="/admin" className="flex items-center gap-2.5">
             <img
-              src="/brand/logo.jpg"
-              alt="Nutrition Store"
+              src="/brand/edigiya-mark.svg"
+              alt="Edigiya Store DZ"
               width={36}
               height={36}
               className="h-9 w-9 rounded-md object-contain"
             />
             <div>
-              <span className="block text-sm font-bold text-foreground">Nutrition Store</span>
+              <span className="block text-sm font-bold text-foreground">Edigiya</span>
               <span className="block text-[9px] font-medium uppercase tracking-widest text-muted-foreground">
                 Admin Panel
               </span>
@@ -182,19 +176,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             >
               <Menu className="h-5 w-5" />
             </Button>
-            <div className="relative hidden sm:block">
-              <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Rechercher..."
-                className="w-64 ps-9"
-              />
-            </div>
+            <div className="hidden sm:block"><p className="text-sm font-semibold text-foreground">{sidebarLinks.find((link) => link.href === "/admin" ? pathname === "/admin" : pathname.startsWith(link.href))?.label || "Operations"}</p><p className="text-xs text-muted-foreground">Edigiya operations</p></div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              <span className="absolute end-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500" />
-            </Button>
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
               A
             </div>

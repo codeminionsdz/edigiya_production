@@ -63,7 +63,7 @@ function exportToExcel(customers: AdminCustomer[]) {
   let csvContent = "\uFEFF"; // UTF-8 BOM
   
   // Add title
-  csvContent += "تقرير العملاء - Nutrition Store\n";
+  csvContent += "تقرير العملاء - Edigiya\n";
   csvContent += `تاريخ التقرير: ${reportDate}\n`;
   csvContent += `عدد العملاء: ${customers.length}\n`;
   csvContent += "\n";

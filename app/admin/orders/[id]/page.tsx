@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Truck } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,9 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { adminGetOrderById, adminUpdateOrderStatus } from '@/app/admin/actions';
+import { adminDeliverOrder, adminGetOrderById, adminUpdateOrderStatus } from '@/app/admin/actions';
+import { PaymentPanel } from './payment-panel';
+import { FulfillmentContentPanel } from './fulfillment-content-panel';
 
 const statusColors: Record<string, string> = {
   pending: 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400',
@@ -47,6 +49,8 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState('');
   const [adminNote, setAdminNote] = useState('');
+  const [isDelivering, setIsDelivering] = useState(false);
+  const [deliveryContentCount, setDeliveryContentCount] = useState(0);
 
   useEffect(() => {
     async function loadOrder() {
@@ -80,6 +84,18 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
       alert('Erreur lors de la mise à jour');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDeliver = async () => {
+    if (!order || isDelivering) return;
+    setIsDelivering(true);
+    try {
+      const result = await adminDeliverOrder(orderId);
+      if (!result.success) alert(result.error);
+      else window.location.reload();
+    } finally {
+      setIsDelivering(false);
     }
   };
 
@@ -138,6 +154,18 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Details */}
         <div className="lg:col-span-2 space-y-6">
+          <PaymentPanel orderId={orderId} payment={order.payments?.[0]} />
+          <FulfillmentContentPanel order={order} onFulfillmentReady={(fulfillment, itemCount) => { setDeliveryContentCount(itemCount); if (fulfillment && !order.order_fulfillments?.[0]) setOrder((current: any) => ({ ...current, order_fulfillments: [fulfillment] })); }} />
+          <Card>
+            <CardHeader><CardTitle className="flex items-center gap-2"><Truck className="h-5 w-5" />Livraison digitale</CardTitle></CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              <div className="flex items-center justify-between"><span className="text-muted-foreground">Type</span><span className="font-semibold">Manuelle</span></div>
+              <div className="flex items-center justify-between"><span className="text-muted-foreground">Statut</span><Badge>{order.order_fulfillments?.[0]?.status === 'delivered' ? 'Livrée' : order.order_fulfillments?.[0]?.status === 'failed' ? 'Livraison impossible' : order.order_fulfillments?.[0]?.status === 'cancelled' ? 'Livraison annulée' : order.payments?.[0]?.status === 'paid' && order.delivery_method === 'digital' ? 'À livrer' : 'Bloquée — paiement non vérifié ou commande non digitale'}</Badge></div>
+              {order.payments?.[0]?.status === 'paid' && order.delivery_method === 'digital' && deliveryContentCount > 0 && ['pending', 'processing'].includes(order.order_fulfillments?.[0]?.status || 'pending') && <Button onClick={handleDeliver} disabled={isDelivering}>{isDelivering ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Truck className="mr-2 h-4 w-4" />}Marquer comme livrée</Button>}
+              {order.order_fulfillments?.[0]?.status === 'delivered' && <p className="text-muted-foreground">Livrée le {new Date(order.order_fulfillments[0].delivered_at).toLocaleString('fr-DZ')}</p>}
+              {(order.fulfillment_events || []).length > 0 && <div className="border-t pt-3"><p className="mb-2 font-medium">Historique</p>{order.fulfillment_events.map((event: any) => <p key={event.id} className="text-xs text-muted-foreground">Livraison marquée le {new Date(event.created_at).toLocaleString('fr-DZ')}</p>)}</div>}
+            </CardContent>
+          </Card>
           {/* Order Summary */}
           <Card>
             <CardHeader>

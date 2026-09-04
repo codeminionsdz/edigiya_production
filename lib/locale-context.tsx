@@ -21,9 +21,14 @@ const LocaleContext = createContext<LocaleContextType>(defaultValue)
 
 export function LocaleProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>("fr")
+  useEffect(() => {
+    const saved = window.localStorage.getItem("edigiya-locale")
+    if (saved === "fr" || saved === "ar") setLocaleState(saved)
+  }, [])
 
   const setLocale = useCallback((newLocale: Locale) => {
     setLocaleState(newLocale)
+    window.localStorage.setItem("edigiya-locale", newLocale)
   }, [])
 
   useEffect(() => {

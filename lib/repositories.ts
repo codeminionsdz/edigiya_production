@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@supabase/supabase-js';
+import crypto from 'crypto';
 import { StoreSettings } from '@/lib/store-settings';
 
 function requireEnvVar(name: string, value: string | undefined): string {
@@ -1256,7 +1257,8 @@ export async function getOrders(filters?: {
         unit_price_dzd,
         qty,
         line_total_dzd
-      )
+      ),
+      payments(*)
     `,
       { count: 'exact' }
     );
@@ -1309,7 +1311,8 @@ export async function adminGetOrders(filters?: {
         unit_price_dzd,
         qty,
         line_total_dzd
-      )
+      ),
+      payments(*)
     `,
       { count: 'exact' }
     );
@@ -1465,6 +1468,15 @@ export async function getOrderById(id: string) {
   return data;
 }
 
+export async function getCustomerOrderById(id: string, sessionId: string) {
+  const { data: order, error: orderError } = await supabaseAdmin.from('orders').select('*, order_items(id, product_id, variant_id, title_snapshot, unit_price_dzd, qty, line_total_dzd)').eq('id', id).eq('session_id', sessionId).single();
+  if (orderError) throw orderError;
+  const { data: payments, error: paymentError } = await supabaseAdmin.from('payments').select('id, method, status, amount_dzd, failure_reason, created_at, verified_at').eq('order_id', id).order('created_at', { ascending: false });
+  if (paymentError) throw paymentError;
+  const { data: fulfillments } = await supabaseAdmin.from('order_fulfillments').select('id, fulfillment_type, status, created_at, delivered_at').eq('order_id', id).order('created_at', { ascending: false });
+  return { ...order, payments: payments || [], order_fulfillments: fulfillments || [] };
+}
+
 export async function adminGetOrderById(id: string) {
   const { data, error } = await supabaseAdmin
     .from('orders')
@@ -1479,13 +1491,198 @@ export async function adminGetOrderById(id: string) {
         unit_price_dzd,
         qty,
         line_total_dzd
-      )
+      ),
+      payments(*),
+      order_fulfillments(*)
     `
     )
     .eq('id', id)
-    .single();
+  .single();
+  if (error) throw error;
+  const paymentIds = ((data?.payments || []) as any[]).map((payment) => payment.id).filter(Boolean);
+  const fulfillmentId = data?.order_fulfillments?.[0]?.id;
+  const fulfillmentEvents = fulfillmentId
+    ? await supabaseAdmin.from('fulfillment_events').select('*').eq('fulfillment_id', fulfillmentId).order('created_at', { ascending: true })
+    : { data: [], error: null };
+  if (fulfillmentEvents.error) throw fulfillmentEvents.error;
+  if (paymentIds.length === 0) return { ...data, fulfillment_events: fulfillmentEvents.data || [] };
+
+  const { data: events, error: eventsError } = await supabaseAdmin
+    .from('payment_events')
+    .select('*')
+    .in('payment_id', paymentIds)
+    .order('created_at', { ascending: true });
+  if (eventsError) throw eventsError;
+
+  const eventsByPayment = new Map<string, any[]>();
+  for (const event of events || []) {
+    const current = eventsByPayment.get(event.payment_id) || [];
+    current.push(event);
+    eventsByPayment.set(event.payment_id, current);
+  }
+  return {
+    ...data,
+    payments: (data.payments || []).map((payment: any) => ({
+      ...payment,
+      payment_events: eventsByPayment.get(payment.id) || [],
+    })),
+    fulfillment_events: fulfillmentEvents.data || [],
+  };
+}
+
+export async function adminDeliverOrder(orderId: string, actorId?: string) {
+  const { data, error } = await supabaseAdmin.rpc('admin_deliver_order_atomic', {
+    p_order_id: orderId,
+    p_actor_id: actorId || null,
+  });
   if (error) throw error;
   return data;
+}
+
+const DIGITAL_DELIVERY_BUCKET = 'digital-delivery';
+const MAX_DELIVERY_FILE_BYTES = 8 * 1024 * 1024;
+
+function validateDeliveryUrl(value: string) {
+  const parsed = new URL(value.trim());
+  if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('INVALID_DELIVERY_URL');
+  return parsed.toString();
+}
+
+function validateDeliveryFile(file: File, bytes: Uint8Array) {
+  if (!file || file.size < 1 || file.size > MAX_DELIVERY_FILE_BYTES) throw new Error('DELIVERY_FILE_TOO_LARGE');
+  const allowed = new Set(['application/pdf', 'application/zip', 'application/x-zip-compressed', 'image/jpeg', 'image/png', 'image/webp', 'text/plain']);
+  if (!allowed.has(file.type)) throw new Error('DELIVERY_FILE_TYPE_NOT_ALLOWED');
+  const startsWith = (values: number[]) => values.every((value, index) => bytes[index] === value);
+  const isSignatureValid = file.type === 'text/plain'
+    || (file.type === 'application/pdf' && new TextDecoder().decode(bytes.slice(0, 5)) === '%PDF-')
+    || (['application/zip', 'application/x-zip-compressed'].includes(file.type) && startsWith([0x50, 0x4b, 0x03, 0x04]))
+    || (file.type === 'image/jpeg' && startsWith([0xff, 0xd8, 0xff]))
+    || (file.type === 'image/png' && startsWith([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+    || (file.type === 'image/webp' && new TextDecoder().decode(bytes.slice(0, 4)) === 'RIFF' && new TextDecoder().decode(bytes.slice(8, 12)) === 'WEBP');
+  if (!isSignatureValid) throw new Error('DELIVERY_FILE_SIGNATURE_INVALID');
+}
+
+async function verifyAdminDigitalFulfillment(fulfillmentId: string) {
+  const { data: fulfillment, error } = await supabaseAdmin.from('order_fulfillments').select('id, order_id, status, fulfillment_type, orders!inner(id, delivery_method)').eq('id', fulfillmentId).single();
+  if (error || !fulfillment || (fulfillment as any).orders?.delivery_method !== 'digital') throw new Error('FULFILLMENT_NOT_ELIGIBLE');
+  const { data: payments, error: paymentError } = await supabaseAdmin.from('payments').select('status').eq('order_id', fulfillment.order_id).eq('status', 'paid').limit(1);
+  if (paymentError || !payments?.length) throw new Error('PAYMENT_NOT_PAID');
+  return fulfillment;
+}
+
+export async function adminGetFulfillmentItems(fulfillmentId: string) {
+  await verifyAdminDigitalFulfillment(fulfillmentId);
+  const { data, error } = await supabaseAdmin.from('fulfillment_items').select('id, fulfillment_id, type, title, description, sort_order, original_filename, mime_type, file_size_bytes, url, created_at, updated_at').eq('fulfillment_id', fulfillmentId).order('sort_order', { ascending: true }).order('created_at', { ascending: true });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function adminPrepareFulfillment(orderId: string) {
+  const { data, error } = await supabaseAdmin.rpc('admin_prepare_order_fulfillment', { p_order_id: orderId });
+  if (error) throw error;
+  return data;
+}
+
+export async function adminAddFulfillmentItem(input: { fulfillmentId: string; type: 'file' | 'link' | 'code' | 'manual'; title: string; description?: string; url?: string; code?: string; message?: string; file?: File }) {
+  const fulfillment: any = await verifyAdminDigitalFulfillment(input.fulfillmentId);
+  const title = input.title.trim();
+  if (!title || title.length > 200) throw new Error('INVALID_DELIVERY_TITLE');
+  const row: any = { fulfillment_id: fulfillment.id, type: input.type, title, description: input.description?.trim() || null, sort_order: 0 };
+  let uploadedPath: string | null = null;
+  if (input.type === 'file') {
+    if (!input.file) throw new Error('DELIVERY_FILE_REQUIRED');
+    const bytes = new Uint8Array(await input.file.arrayBuffer());
+    validateDeliveryFile(input.file, bytes);
+    const extension = input.file.name.includes('.') ? input.file.name.split('.').pop()!.toLowerCase().replace(/[^a-z0-9]/g, '') : 'bin';
+    uploadedPath = `fulfillment/${fulfillment.order_id}/${fulfillment.id}/${crypto.randomUUID()}.${extension || 'bin'}`;
+    const { error } = await supabaseAdmin.storage.from(DIGITAL_DELIVERY_BUCKET).upload(uploadedPath, bytes, { contentType: input.file.type, upsert: false });
+    if (error) throw error;
+    row.object_path = uploadedPath; row.original_filename = input.file.name.slice(0, 255); row.mime_type = input.file.type; row.file_size_bytes = input.file.size;
+  } else if (input.type === 'link') row.url = validateDeliveryUrl(input.url || '');
+  else if (input.type === 'code') { if (!input.code?.trim()) throw new Error('DELIVERY_CONTENT_REQUIRED'); row.code = input.code; }
+  else if (input.type === 'manual') { if (!input.message?.trim()) throw new Error('DELIVERY_CONTENT_REQUIRED'); row.message = input.message; }
+  else throw new Error('INVALID_DELIVERY_TYPE');
+  try {
+    const { data, error } = await supabaseAdmin.from('fulfillment_items').insert(row).select('id, fulfillment_id, type, title, description, sort_order, original_filename, mime_type, file_size_bytes, url, created_at, updated_at').single();
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    if (uploadedPath) await supabaseAdmin.storage.from(DIGITAL_DELIVERY_BUCKET).remove([uploadedPath]);
+    throw error;
+  }
+}
+
+export async function adminUpdateFulfillmentItem(itemId: string, input: { title: string; description?: string; url?: string; code?: string; message?: string }) {
+  const { data: item, error: itemError } = await supabaseAdmin.from('fulfillment_items').select('id, fulfillment_id, type').eq('id', itemId).single();
+  if (itemError || !item) throw new Error('FULFILLMENT_ITEM_NOT_FOUND');
+  await verifyAdminDigitalFulfillment(item.fulfillment_id);
+  const title = input.title.trim();
+  if (!title || title.length > 200) throw new Error('INVALID_DELIVERY_TITLE');
+  const update: any = { title, description: input.description?.trim() || null };
+  if (item.type === 'link') update.url = validateDeliveryUrl(input.url || '');
+  if (item.type === 'code') { if (!input.code?.trim()) throw new Error('DELIVERY_CONTENT_REQUIRED'); update.code = input.code; }
+  if (item.type === 'manual') { if (!input.message?.trim()) throw new Error('DELIVERY_CONTENT_REQUIRED'); update.message = input.message; }
+  const { data, error } = await supabaseAdmin.from('fulfillment_items').update(update).eq('id', itemId).select('id, fulfillment_id, type, title, description, sort_order, original_filename, mime_type, file_size_bytes, url, created_at, updated_at').single();
+  if (error) throw error;
+  return data;
+}
+
+export async function adminDeleteFulfillmentItem(itemId: string) {
+  const { data: item, error: itemError } = await supabaseAdmin.from('fulfillment_items').select('id, fulfillment_id, object_path').eq('id', itemId).single();
+  if (itemError || !item) throw new Error('FULFILLMENT_ITEM_NOT_FOUND');
+  await verifyAdminDigitalFulfillment(item.fulfillment_id);
+  const { error } = await supabaseAdmin.from('fulfillment_items').delete().eq('id', itemId);
+  if (error) throw error;
+  if (item.object_path) { const cleanup = await supabaseAdmin.storage.from(DIGITAL_DELIVERY_BUCKET).remove([item.object_path]); if (cleanup.error) console.error('Delivery file cleanup failed:', cleanup.error); }
+  return { success: true };
+}
+
+export async function getCustomerFulfillmentItems(orderId: string, sessionId: string) {
+  const { data: order, error: orderError } = await supabaseAdmin.from('orders').select('id, delivery_method, session_id').eq('id', orderId).eq('session_id', sessionId).eq('delivery_method', 'digital').single();
+  if (orderError || !order) return [];
+  const { data: paidPayment } = await supabaseAdmin.from('payments').select('id').eq('order_id', orderId).eq('status', 'paid').limit(1).maybeSingle();
+  if (!paidPayment) return [];
+  const { data: fulfillment, error: fulfillmentError } = await supabaseAdmin.from('order_fulfillments').select('id, status').eq('order_id', orderId).eq('status', 'delivered').single();
+  if (fulfillmentError || !fulfillment) return [];
+  const { data: items, error } = await supabaseAdmin.from('fulfillment_items').select('id, type, title, description, sort_order, original_filename, mime_type, file_size_bytes, url, code, message, object_path').eq('fulfillment_id', fulfillment.id).order('sort_order', { ascending: true }).order('created_at', { ascending: true });
+  if (error) throw error;
+  return Promise.all((items || []).map(async (item: any) => {
+    const safe: any = { id: item.id, type: item.type, title: item.title, description: item.description, sort_order: item.sort_order, original_filename: item.original_filename, mime_type: item.mime_type, file_size_bytes: item.file_size_bytes };
+    if (item.type === 'file' && item.object_path) { const signed = await supabaseAdmin.storage.from(DIGITAL_DELIVERY_BUCKET).createSignedUrl(item.object_path, 300); if (signed.error) throw signed.error; safe.download_url = signed.data.signedUrl; }
+    if (item.type === 'link') safe.url = item.url;
+    if (item.type === 'code') safe.code = item.code;
+    if (item.type === 'manual') safe.message = item.message;
+    return safe;
+  }));
+}
+
+export async function getResumableCheckoutForSession(sessionId: string, orderHint?: string | null) {
+  const { data, error } = await supabaseAdmin
+    .from('orders')
+    .select(`id, order_number, subtotal_dzd, shipping_dzd, total_dzd, created_at, checkout_idempotency_key, session_id, order_items(id, title_snapshot, unit_price_dzd, qty, line_total_dzd), payments(id, method, status, amount_dzd, failure_reason)`)
+    .eq('session_id', sessionId)
+    .not('checkout_idempotency_key', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(25)
+  if (error) throw error
+
+  const resumableStatuses = new Set(['pending', 'verification_required', 'rejected', 'paid', 'failed', 'cancelled'])
+  const candidates = ((data || []) as any[])
+    .map((order) => ({ order, payment: Array.isArray(order.payments) ? order.payments[0] : null }))
+    .filter(({ order, payment }) => order.session_id === sessionId && payment && resumableStatuses.has(payment.status))
+  const selected = (orderHint && candidates.find(({ order }) => order.id === orderHint)) || candidates[0]
+  if (!selected) return null
+
+  const { order, payment } = selected
+  return {
+    orderId: order.id, orderNumber: order.order_number, paymentId: payment.id,
+    paymentStatus: payment.status, paymentMethod: payment.method,
+    amount: Number(payment.amount_dzd ?? order.total_dzd ?? 0), rejectionReason: payment.failure_reason || '',
+    createdOrder: {
+      subtotal: Number(order.subtotal_dzd ?? 0), total: Number(order.total_dzd ?? 0), shipping: Number(order.shipping_dzd ?? 0),
+      items: (order.order_items || []).map((item: any) => ({ id: item.id, title: item.title_snapshot, qty: item.qty, unitPrice: Number(item.unit_price_dzd ?? 0), lineTotal: Number(item.line_total_dzd ?? 0) })),
+    },
+  }
 }
 
 export async function updateOrderStatus(
@@ -1580,6 +1777,11 @@ export async function upsertStoreSettings(settings: StoreSettings) {
           facebook: settings.facebook,
           instagram: settings.instagram,
           tiktok: settings.tiktok,
+          flexy_number: settings.flexyNumber,
+          flexy_instructions: settings.flexyInstructions,
+          ccp_instructions: settings.ccpInstructions,
+          bank_instructions: settings.bankInstructions,
+          telegram_link: settings.telegramLink,
         },
       ])
       .select()
@@ -1605,6 +1807,11 @@ export async function upsertStoreSettings(settings: StoreSettings) {
       facebook: settings.facebook,
       instagram: settings.instagram,
       tiktok: settings.tiktok,
+      flexy_number: settings.flexyNumber,
+      flexy_instructions: settings.flexyInstructions,
+      ccp_instructions: settings.ccpInstructions,
+      bank_instructions: settings.bankInstructions,
+      telegram_link: settings.telegramLink,
     })
     .eq('id', existing.id)
     .select()
@@ -1630,6 +1837,146 @@ export async function addOrderItem(data: {
     .single();
   if (error) throw error;
   return result;
+}
+
+export async function getCheckoutProductsByIds(ids: string[]) {
+  const { data, error } = await supabaseAdmin
+    .from('products')
+    .select('id, title_fr, price_dzd, stock, is_active, product_variants(id, product_id, price_delta_dzd, stock)')
+    .in('id', ids);
+  if (error) throw error;
+  return data || [];
+}
+
+export async function createOrderPaymentAtomic(data: {
+  orderNumber: string; checkoutKey: string; sessionId: string; paymentMethod: string;
+  subtotal: number; shipping: number; total: number; wilayaCode: number | null; deliveryMethod: string;
+  addressSnapshot: Record<string, unknown>; items: Record<string, unknown>[];
+}) {
+  const { data: result, error } = await supabaseAdmin.rpc('create_order_payment_atomic', {
+    p_order_number: data.orderNumber, p_checkout_key: data.checkoutKey, p_session_id: data.sessionId,
+    p_status: 'pending', p_payment_method: data.paymentMethod, p_subtotal: data.subtotal,
+    p_shipping: data.shipping, p_total: data.total, p_wilaya_code: data.wilayaCode,
+    p_delivery_method: data.deliveryMethod, p_address_snapshot: data.addressSnapshot, p_items: data.items,
+  });
+  if (error) throw error;
+  return (result as any[])?.[0];
+}
+
+export async function createPayment(data: {
+  order_id: string; method: string; provider?: string; amount_dzd: number; idempotency_key: string;
+}) {
+  const { data: result, error } = await supabaseAdmin
+    .from('payments').insert([{ ...data, status: 'pending' }]).select().single();
+  if (error) throw error;
+  return result;
+}
+
+export async function getPaymentWithOrder(paymentId: string, orderId?: string) {
+  let query = supabaseAdmin.from('payments').select('*, orders!inner(id, session_id, order_number)').eq('id', paymentId);
+  if (orderId) query = query.eq('order_id', orderId);
+  const { data, error } = await query.maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function createPaymentEvent(data: {
+  payment_id: string; event_type: string; actor_type: string; actor_id?: string; metadata?: Record<string, unknown>;
+}) {
+  const { data: result, error } = await supabaseAdmin.from('payment_events').insert([data]).select().single();
+  if (error) throw error;
+  return result;
+}
+
+export async function updatePayment(paymentId: string, data: Record<string, unknown>) {
+  const { data: result, error } = await supabaseAdmin.from('payments').update(data).eq('id', paymentId).select().single();
+  if (error) throw error;
+  return result;
+}
+
+export async function transitionPayment(paymentId: string, fromStatus: string, data: Record<string, unknown>) {
+  const { data: result, error } = await supabaseAdmin.from('payments').update(data).eq('id', paymentId).eq('status', fromStatus).select().maybeSingle();
+  if (error) throw error;
+  if (!result) throw new Error('PAYMENT_STATE_CONFLICT');
+  return result;
+}
+
+export async function transitionPaymentFromStatuses(paymentId: string, fromStatuses: string[], data: Record<string, unknown>) {
+  const { data: result, error } = await supabaseAdmin.from('payments').update(data).eq('id', paymentId).in('status', fromStatuses).select().maybeSingle();
+  if (error) throw error;
+  if (!result) throw new Error('PAYMENT_STATE_CONFLICT');
+  return result;
+}
+
+export async function transitionPaymentForProof(paymentId: string, fromStatus: string, data: Record<string, unknown>) {
+  let query = supabaseAdmin.from('payments').update(data).eq('id', paymentId).eq('status', fromStatus);
+  if (fromStatus === 'verification_required') query = query.is('proof_object_path', null);
+  const { data: result, error } = await query.select().maybeSingle();
+  if (error) throw error;
+  if (!result) throw new Error('PAYMENT_STATE_CONFLICT');
+  return result;
+}
+
+export async function submitPaymentProofAtomic(
+  paymentId: string,
+  orderId: string,
+  sessionId: string,
+  proofObjectPath: string,
+  providerReference: string | null,
+) {
+  const { data, error } = await supabaseAdmin.rpc('submit_payment_proof_atomic', {
+    p_payment_id: paymentId,
+    p_order_id: orderId,
+    p_session_id: sessionId,
+    p_proof_object_path: proofObjectPath,
+    p_provider_reference: providerReference,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function transitionAdminPaymentAtomic(
+  paymentId: string,
+  targetStatus: 'paid' | 'rejected',
+  note: string | null,
+) {
+  const { data, error } = await supabaseAdmin.rpc('admin_transition_payment_atomic', {
+    p_payment_id: paymentId,
+    p_target_status: targetStatus,
+    p_note: note,
+    p_actor_id: 'admin',
+  });
+  if (error) throw error;
+  return Array.isArray(data) ? data[0] : data;
+}
+
+export async function uploadPaymentProof(paymentId: string, orderId: string, file: File) {
+  const extension = file.type === 'image/jpeg' ? 'jpg' : file.type === 'image/png' ? 'png' : 'webp';
+  const path = `${orderId}/${paymentId}/${crypto.randomUUID()}.${extension}`;
+  const { error } = await supabaseAdmin.storage.from('payment-proofs').upload(path, file, { contentType: file.type, upsert: false });
+  if (error) throw error;
+  return path;
+}
+
+export async function deletePaymentProof(path: string) {
+  const { error } = await supabaseAdmin.storage.from('payment-proofs').remove([path]);
+  if (error) throw error;
+}
+
+export async function getPaymentProofSignedUrl(path: string) {
+  const { data, error } = await supabaseAdmin.storage.from('payment-proofs').createSignedUrl(path, 300);
+  if (error) throw error;
+  return data.signedUrl;
+}
+
+export async function getAdminPaymentProofSignedUrl(paymentId: string, orderId: string) {
+  const payment: any = await getPaymentWithOrder(paymentId, orderId);
+  const path = String(payment?.proof_object_path || '');
+  const expectedPrefix = `${orderId}/${paymentId}/`;
+  if (!payment || !path.startsWith(expectedPrefix) || path.includes('..') || path.includes('\\')) {
+    throw new Error('PROOF_NOT_AVAILABLE');
+  }
+  return getPaymentProofSignedUrl(path);
 }
 
 // ============================================================================

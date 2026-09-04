@@ -104,9 +104,8 @@ export default async function BrandPage({
           <div>
             <h1 className="text-2xl font-bold text-foreground sm:text-3xl">{brand.name}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Trusted supplement brand
+              {products.length} offres disponibles
             </p>
-            <p className="mt-1 text-sm text-muted-foreground">{products.length} produit(s)</p>
           </div>
         </div>
       </div>

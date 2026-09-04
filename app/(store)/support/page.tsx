@@ -1,153 +1,21 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { MessageCircle, Phone, Mail, Clock, Truck, RotateCcw, Shield, CreditCard, HelpCircle } from "lucide-react"
+import { ChevronDown, Mail, MessageCircle, Phone, Send } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { useLocale } from "@/lib/locale-context"
-import {
-  DEFAULT_STORE_SETTINGS,
-  fetchStoreSettings,
-  loadStoreSettings,
-  toTelUrl,
-  toWhatsAppUrl,
-} from "@/lib/store-settings"
+import { DEFAULT_STORE_SETTINGS, fetchStoreSettings, loadStoreSettings, toTelUrl, toWhatsAppUrl } from "@/lib/store-settings"
 
-const faqCategories = [
-  {
-    icon: Truck,
-    title: { fr: "Livraison", ar: "التوصيل" },
-    faqs: [
-      { q: { fr: "Quels sont les delais de livraison ?", ar: "ما هي مدة التوصيل؟" }, a: { fr: "Les delais varient de 1 a 10 jours selon votre wilaya. Alger et ses environs: 1-2 jours. Autres wilayas: 2-5 jours. Sud: 5-10 jours.", ar: "تختلف المدة من يوم الى 10 ايام حسب ولايتك. الجزائر ومحيطها: 1-2 يوم. ولايات اخرى: 2-5 ايام. الجنوب: 5-10 ايام." } },
-      { q: { fr: "Combien coute la livraison ?", ar: "كم تكلفة التوصيل؟" }, a: { fr: "Les frais de livraison varient selon votre wilaya et le mode de livraison choisi (domicile ou point relais). Consultez la page de livraison pour les tarifs detailles.", ar: "تختلف تكلفة التوصيل حسب ولايتك ونوع التوصيل (للمنزل او مكتب التوقف). راجع صفحة التوصيل للاسعار المفصلة." } },
-      { q: { fr: "Livrez-vous dans toutes les wilayas ?", ar: "هل توصلون لجميع الولايات؟" }, a: { fr: "Oui, nous livrons vers les 58 wilayas d'Algerie.", ar: "نعم، نوصل لجميع الولايات الـ58 في الجزائر." } },
-    ],
-  },
-  {
-    icon: RotateCcw,
-    title: { fr: "Retours et remboursements", ar: "الارجاع والاسترداد" },
-    faqs: [
-      { q: { fr: "Puis-je retourner un produit ?", ar: "هل يمكنني ارجاع منتج؟" }, a: { fr: "Oui, vous disposez de 7 jours apres reception pour retourner un produit non ouvert dans son emballage d'origine.", ar: "نعم، لديك 7 ايام بعد الاستلام لارجاع منتج غير مفتوح في عبوته الاصلية." } },
-      { q: { fr: "Comment demander un remboursement ?", ar: "كيف اطلب استرداد؟" }, a: { fr: "Contactez-nous via WhatsApp ou email avec votre numero de commande. Nous traiterons votre demande sous 48h.", ar: "تواصل معنا عبر واتساب او البريد مع رقم طلبك. سنعالج طلبك خلال 48 ساعة." } },
-    ],
-  },
-  {
-    icon: CreditCard,
-    title: { fr: "Paiement", ar: "الدفع" },
-    faqs: [
-      { q: { fr: "Quels modes de paiement acceptez-vous ?", ar: "ما طرق الدفع المقبولة؟" }, a: { fr: "Nous acceptons: Paiement a la livraison (COD), Carte CIB, Carte Edahabia, et Virement bancaire.", ar: "نقبل: الدفع عند الاستلام، بطاقة CIB، بطاقة الذهبية، والتحويل البنكي." } },
-      { q: { fr: "Le paiement a la livraison est-il disponible ?", ar: "هل الدفع عند الاستلام متاح؟" }, a: { fr: "Oui, le paiement a la livraison (COD) est disponible pour toutes les wilayas.", ar: "نعم، الدفع عند الاستلام متاح لجميع الولايات." } },
-    ],
-  },
-  {
-    icon: Shield,
-    title: { fr: "Garantie", ar: "الضمان" },
-    faqs: [
-      { q: { fr: "Vos produits sont-ils garantis ?", ar: "هل منتجاتكم مضمونة؟" }, a: { fr: "Oui, tous nos produits beneficient de la garantie officielle du fabricant. La duree varie selon le produit (1 a 3 ans).", ar: "نعم، جميع منتجاتنا تستفيد من الضمان الرسمي للشركة المصنعة. تختلف المدة حسب المنتج (سنة الى 3 سنوات)." } },
-    ],
-  },
+const faqs = [
+  { q: { fr: "Comment suivre ma commande ?", ar: "كيف أتابع طلبي؟" }, a: { fr: "Connectez-vous à votre compte puis ouvrez la section Commandes. Vous y retrouverez la référence et l’état réel de chaque commande.", ar: "سجل الدخول إلى حسابك ثم افتح قسم الطلبات لمعرفة المرجع والحالة الحالية." } },
+  { q: { fr: "Quels modes de paiement sont disponibles ?", ar: "ما هي طرق الدفع المتاحة؟" }, a: { fr: "Le checkout propose les méthodes actuellement configurées : paiement à la réception, CIB, Edahabia et virement bancaire.", ar: "تتوفر طرق الدفع المهيأة حالياً: الدفع عند الاستلام و CIB والذهبية والتحويل البنكي." } },
+  { q: { fr: "Comment vous contacter au sujet d’une commande ?", ar: "كيف أتواصل معكم بخصوص طلب؟" }, a: { fr: "Indiquez votre référence de commande et contactez-nous via WhatsApp, téléphone ou email. Notre équipe pourra vous répondre plus précisément.", ar: "أرسل رقم طلبك وتواصل معنا عبر واتساب أو الهاتف أو البريد الإلكتروني لمساعدتك بشكل أدق." } },
 ]
 
 export default function SupportPage() {
-  const { locale } = useLocale()
-  const [settings, setSettings] = useState(DEFAULT_STORE_SETTINGS)
-
-  useEffect(() => {
-    let active = true
-
-    async function loadSettings() {
-      try {
-        const settings = await fetchStoreSettings()
-        if (active) setSettings(settings)
-      } catch (error) {
-        console.error('Failed to load store settings:', error)
-        if (active) setSettings(loadStoreSettings())
-      }
-    }
-
-    void loadSettings()
-
-    return () => {
-      active = false
-    }
-  }, [])
-
-  return (
-    <div className="mx-auto max-w-4xl px-4 py-8">
-      {/* Header */}
-      <div className="mb-10 text-center">
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
-          <HelpCircle className="h-7 w-7 text-primary" />
-        </div>
-        <h1 className="font-heading text-2xl font-bold text-foreground sm:text-3xl">
-          {locale === "fr" ? "Centre d'aide" : "مركز المساعدة"}
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {locale === "fr" ? "Trouvez des reponses a vos questions les plus frequentes" : "ابحث عن اجوبة لاسئلتك الاكثر شيوعا"}
-        </p>
-      </div>
-
-      {/* Contact CTA */}
-      <div className="mb-10 grid gap-4 sm:grid-cols-3">
-        {[
-          { icon: MessageCircle, label: { fr: "WhatsApp", ar: "واتساب" }, value: settings.whatsapp, href: toWhatsAppUrl(settings.whatsapp), color: "text-green-600 bg-green-100 dark:bg-green-900/30" },
-          { icon: Phone, label: { fr: "Telephone", ar: "الهاتف" }, value: `${settings.phonePrimary} / ${settings.phoneSecondary}`, href: toTelUrl(settings.phonePrimary), color: "text-primary bg-primary/15" },
-          { icon: Mail, label: { fr: "Email", ar: "البريد" }, value: settings.contactEmail, href: `mailto:${settings.contactEmail}`, color: "text-primary bg-primary/15" },
-        ].map((item) => (
-          <a key={item.value} href={item.href} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 rounded-xl border border-border bg-card p-5 transition-colors hover:border-primary/30 hover:shadow-sm">
-            <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${item.color}`}>
-              <item.icon className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-foreground">{item.label[locale]}</p>
-              <p className="text-xs text-muted-foreground">{item.value}</p>
-            </div>
-          </a>
-        ))}
-      </div>
-
-      {/* FAQ Sections */}
-      <div className="flex flex-col gap-8">
-        {faqCategories.map((category, i) => (
-          <section key={i} id={category.title.fr.toLowerCase().replace(/\s/g, "-")}>
-            <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <category.icon className="h-4.5 w-4.5" />
-              </div>
-              <h2 className="font-heading text-lg font-bold text-foreground">{category.title[locale]}</h2>
-            </div>
-            <Accordion type="single" collapsible className="rounded-xl border border-border bg-card">
-              {category.faqs.map((faq, j) => (
-                <AccordionItem key={j} value={`${i}-${j}`} className="border-border px-5">
-                  <AccordionTrigger className="text-sm font-medium text-foreground hover:no-underline">
-                    {faq.q[locale]}
-                  </AccordionTrigger>
-                  <AccordionContent className="text-sm leading-relaxed text-muted-foreground">
-                    {faq.a[locale]}
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-          </section>
-        ))}
-      </div>
-
-      {/* WhatsApp CTA */}
-      <div className="mt-12 rounded-2xl bg-green-600 p-8 text-center">
-        <MessageCircle className="mx-auto mb-3 h-10 w-10 text-white" />
-        <h3 className="font-heading text-xl font-bold text-white">
-          {locale === "fr" ? "Vous n'avez pas trouve votre reponse ?" : "لم تجد اجابتك؟"}
-        </h3>
-        <p className="mt-2 text-sm text-white/80">
-          {locale === "fr" ? "Notre equipe est disponible sur WhatsApp pour vous aider" : "فريقنا متاح على واتساب لمساعدتك"}
-        </p>
-        <a href={toWhatsAppUrl(settings.whatsapp)} target="_blank" rel="noopener noreferrer">
-          <Button size="lg" className="mt-4 bg-primary text-primary-foreground hover:bg-[#E5C100]">
-            <MessageCircle className="me-2 h-5 w-5" />
-            {locale === "fr" ? "Discuter sur WhatsApp" : "تحدث على واتساب"}
-          </Button>
-        </a>
-      </div>
-    </div>
-  )
+  const { locale } = useLocale(); const isArabic = locale === "ar"; const [settings, setSettings] = useState(DEFAULT_STORE_SETTINGS)
+  useEffect(() => { let active = true; fetchStoreSettings().then((value) => { if (active) setSettings(value) }).catch(() => { if (active) setSettings(loadStoreSettings()) }); return () => { active = false } }, [])
+  const contacts = [{ icon: MessageCircle, label: "WhatsApp", value: settings.whatsapp, href: toWhatsAppUrl(settings.whatsapp) }, { icon: Phone, label: isArabic ? "الهاتف" : "Téléphone", value: settings.phonePrimary, href: toTelUrl(settings.phonePrimary) }, { icon: Mail, label: "Email", value: settings.contactEmail, href: `mailto:${settings.contactEmail}` }]
+  return <main dir={isArabic ? "rtl" : "ltr"} className="mx-auto max-w-[1100px] px-5 py-10 sm:px-8 sm:py-14 lg:px-12 lg:py-16"><header className="max-w-2xl"><p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-primary">Edigiya / {isArabic ? "المساعدة" : "Support"}</p><h1 className="mt-4 font-heading text-4xl font-semibold tracking-tight sm:text-5xl">{isArabic ? "نحن هنا لمساعدتك." : "Nous sommes là pour vous aider."}</h1><p className="mt-5 text-base leading-7 text-muted-foreground">{isArabic ? "سؤال حول منتج أو طلب؟ تواصل معنا بالطريقة التي تناسبك." : "Une question sur un produit ou une commande ? Choisissez le canal qui vous convient."}</p></header><div className="mt-12 grid gap-4 sm:grid-cols-3">{contacts.map(({ icon: Icon, label, value, href }) => <a key={label} href={href} target="_blank" rel="noopener noreferrer" className="group border border-border bg-card p-5 transition-colors hover:border-primary"><Icon className="h-5 w-5 text-primary" /><p className="mt-8 text-sm font-semibold">{label}</p><p className="mt-1 truncate text-xs text-muted-foreground">{value}</p></a>)}</div><div className="mt-16 grid gap-12 lg:grid-cols-[0.7fr_1.3fr]"><div><p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">Questions fréquentes</p><h2 className="mt-3 font-heading text-2xl font-semibold">{isArabic ? "إجابات واضحة." : "Des réponses claires."}</h2></div><Accordion type="single" collapsible className="border-y border-border">{faqs.map((faq, index) => <AccordionItem key={faq.q.fr} value={`faq-${index}`}><AccordionTrigger className="py-5 text-start text-sm font-medium hover:no-underline">{faq.q[locale]}</AccordionTrigger><AccordionContent className="pb-5 text-sm leading-7 text-muted-foreground">{faq.a[locale]}</AccordionContent></AccordionItem>)}</Accordion></div><div className="mt-16 flex flex-col items-start justify-between gap-6 border-t border-border pt-8 sm:flex-row sm:items-center"><div><p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">{isArabic ? "تحتاج إلى مساعدة؟" : "Besoin d’aide ?"}</p><h2 className="mt-2 font-heading text-xl font-semibold">{isArabic ? "تحدث مع فريق Edigiya." : "Parlez avec l’équipe Edigiya."}</h2></div><a href={toWhatsAppUrl(settings.whatsapp)} target="_blank" rel="noopener noreferrer"><Button className="gap-2"><MessageCircle className="h-4 w-4" />{isArabic ? "التحدث عبر واتساب" : "Parler sur WhatsApp"}<Send className="h-3.5 w-3.5" /></Button></a></div></main>
 }

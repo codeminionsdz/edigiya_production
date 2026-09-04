@@ -65,8 +65,8 @@ export function HomeHeroText() {
   const banner = banners[current]
 
   const getDefaultBanner = (): HeroBanner => ({
-    title_fr: "Nutrition Store — premium nutrition for serious results",
-    title_ar: "Nutrition Store – الأفضل لكل رياضي",
+    title_fr: "Edigiya — des offres pensées pour vous",
+    title_ar: "Edigiya – عروض تناسب احتياجاتك",
     description_fr: "Premium supplements, fast delivery, and trusted support for every athlete.",
     description_ar: "منتجات رياضية أصلية، احترافية، وتوصيل سريع لكل الولايات.",
   })

@@ -1,6 +1,6 @@
 'use server';
 
-import { pbkdf2Sync, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHmac, pbkdf2Sync, randomBytes, timingSafeEqual } from 'node:crypto';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import * as repo from '@/lib/repositories';
@@ -10,6 +10,7 @@ const PASSWORD_MIN_LENGTH = 6;
 const HASH_ITERATIONS = 120000;
 const HASH_KEY_LENGTH = 64;
 const HASH_DIGEST = 'sha512';
+const CUSTOMER_AUTH_SECRET = process.env.CUSTOMER_AUTH_SECRET || process.env.ADMIN_PANEL_PASSWORD || 'edigiya-customer-auth-secret';
 
 export type CustomerAuthState = {
   error?: string;
@@ -55,6 +56,7 @@ function verifyPassword(password: string, hash: string, salt: string): boolean {
 
 async function setCustomerAuth(sessionId: string) {
   const cookieStore = await cookies();
+  const signature = createHmac('sha256', CUSTOMER_AUTH_SECRET).update(sessionId).digest('hex');
   cookieStore.set('session_id', sessionId, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -62,13 +64,27 @@ async function setCustomerAuth(sessionId: string) {
     path: '/',
     maxAge: 60 * 60 * 24 * 30,
   });
-  cookieStore.set(AUTH_COOKIE_NAME, '1', {
+  cookieStore.set(AUTH_COOKIE_NAME, `${sessionId}.${signature}`, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
     maxAge: 60 * 60 * 24 * 30,
   });
+}
+
+export async function getAuthenticatedCustomerSessionId() {
+  const cookieStore = await cookies();
+  const auth = cookieStore.get(AUTH_COOKIE_NAME)?.value || '';
+  const separator = auth.indexOf('.');
+  if (separator < 1) return null;
+  const sessionId = auth.slice(0, separator);
+  const signature = auth.slice(separator + 1);
+  if (!/^[0-9a-f-]{36}$/i.test(sessionId) || !/^[0-9a-f]{64}$/i.test(signature)) return null;
+  const expected = createHmac('sha256', CUSTOMER_AUTH_SECRET).update(sessionId).digest('hex');
+  const actualBuffer = Buffer.from(signature, 'hex');
+  const expectedBuffer = Buffer.from(expected, 'hex');
+  return actualBuffer.length === expectedBuffer.length && timingSafeEqual(actualBuffer, expectedBuffer) ? sessionId : null;
 }
 
 export async function loginCustomer(
@@ -166,6 +182,6 @@ export async function registerCustomer(
 
 export async function logoutCustomer() {
   const cookieStore = await cookies();
-  cookieStore.delete(AUTH_COOKIE_NAME);
+  cookieStore.set(AUTH_COOKIE_NAME, '', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 0 });
   redirect('/login');
 }

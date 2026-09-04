@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Lock } from 'lucide-react';
+import Image from 'next/image';
 import { loginAdmin } from '@/app/admin/actions';
 
 export default function AdminLoginPage() {
@@ -36,15 +37,11 @@ export default function AdminLoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted p-4">
-      <Card className="w-full max-w-md border-border">
+      <Card className="w-full max-w-md border-border bg-card">
         <CardHeader className="text-center">
-          <div className="mb-4 flex justify-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <Lock className="h-6 w-6" />
-            </div>
-          </div>
-          <CardTitle className="text-2xl">Admin Panel</CardTitle>
-          <CardDescription>Nutrition Store Administration</CardDescription>
+            <Image src="/brand/edigiya-mark.svg" alt="Edigiya" width={52} height={52} className="mx-auto mb-4 h-12 w-12 object-contain" />
+          <CardTitle className="text-2xl font-semibold">Edigiya Operations</CardTitle>
+          <CardDescription>Accès réservé à l’équipe</CardDescription>
         </CardHeader>
 
         <CardContent>

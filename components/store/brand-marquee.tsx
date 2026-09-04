@@ -128,7 +128,7 @@ export function BrandMarquee() {
             <h2 className="mt-3 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
               Shop by Brand
             </h2>
-            <p className="mt-1 text-sm text-muted-foreground">Trusted supplement brands</p>
+            <p className="mt-1 text-sm text-muted-foreground">Sélections de marques</p>
           </div>
           <Link href="/brands" className="hidden text-sm font-semibold text-primary hover:opacity-80 sm:inline-flex">
             View all brands
@@ -151,7 +151,7 @@ export function BrandMarquee() {
                   <Link
                     key={brand.id}
                     href={`/brand/${encodeURIComponent(brand.slug)}`}
-                    className="group relative flex h-24 min-w-[68%] snap-start items-center justify-center rounded-2xl border border-border bg-background/60 px-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/70 hover:shadow-[0_14px_34px_-22px_rgba(255,214,0,0.85)] sm:min-w-[42%] lg:min-w-[240px]"
+                    className="group relative flex h-24 min-w-[68%] snap-start items-center justify-center rounded-2xl border border-border bg-background/60 px-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/70 hover:shadow-[0_14px_34px_-22px_rgba(45,170,34,0.22)] sm:min-w-[42%] lg:min-w-[240px]"
                   >
                     <BrandLogoBackground
                       src={brand.logo_url}

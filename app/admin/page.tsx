@@ -1,7 +1,6 @@
 import Link from "next/link"
 import {
-  DollarSign, ShoppingCart, AlertTriangle, TrendingUp,
-  TrendingDown, ArrowRight,
+  DollarSign, ShoppingCart, AlertTriangle, ArrowRight,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -9,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { DashboardCharts } from "./dashboard-charts"
 import { MarketCharts } from "./market-charts"
 import { RealtimeVisitors } from "@/components/admin/realtime-visitors"
-import { adminGetOrders, adminGetProducts, adminGetOrderItemsAnalytics, adminGetWilayas } from "@/app/admin/actions"
+import { adminGetOrders, adminGetProducts, adminGetOrderItemsAnalytics } from "@/app/admin/actions"
 
 function formatPrice(price: number) {
   return new Intl.NumberFormat('fr-DZ', {
@@ -35,7 +34,6 @@ type DashboardOrder = {
   order_number?: string
   created_at?: string
   status?: string
-  wilaya_code?: number | string
   total_dzd?: number | string | null
   total?: number | string | null
 }
@@ -84,17 +82,15 @@ const statusLabels: Record<string, string> = {
 
 export default async function AdminDashboard() {
   try {
-    const [ordersData, productsData, orderItemsData, wilayasData] = await Promise.all([
+    const [ordersData, productsData, orderItemsData] = await Promise.all([
       adminGetOrders({ limit: 1000 }),
       adminGetProducts({ limit: 1000 }),
       adminGetOrderItemsAnalytics(5000),
-      adminGetWilayas(),
     ])
 
     const orders: DashboardOrder[] = "error" in ordersData ? [] : (ordersData.orders || [])
     const allProducts: DashboardProduct[] = "error" in productsData ? [] : (productsData.products || [])
     const orderItems: OrderItemRow[] = "error" in orderItemsData ? [] : ((orderItemsData.items || []) as OrderItemRow[])
-    const wilayas = "error" in wilayasData ? [] : (wilayasData || [])
     const lowStockProducts = allProducts.filter((p) => p.stock <= 10).sort((a, b) => a.stock - b.stock)
     
     const totalRevenue = orders.reduce((sum, order) => sum + getOrderTotalDzd(order), 0)
@@ -104,29 +100,21 @@ export default async function AdminDashboard() {
       {
         title: "Revenu total",
         value: formatPrice(totalRevenue),
-        change: "+5.2%",
-        trend: "up" as const,
         icon: DollarSign,
       },
       {
         title: "Commandes",
         value: ordersCount.toString(),
-        change: "+3.1%",
-        trend: "up" as const,
         icon: ShoppingCart,
       },
       {
         title: "Produits",
         value: allProducts.length.toString(),
-        change: ordersCount > 0 ? "+2.0%" : "+0%",
-        trend: "up" as const,
         icon: ShoppingCart,
       },
       {
         title: "Stock faible",
         value: lowStockProducts.length.toString(),
-        change: "alerte",
-        trend: "down" as const,
         icon: AlertTriangle,
       },
     ]
@@ -192,33 +180,12 @@ export default async function AdminDashboard() {
       .sort((a, b) => b.qty - a.qty)
       .slice(0, 6)
 
-    const wilayaMap = new Map<number, string>()
-    wilayas.forEach((wilaya: any) => {
-      const code = Number(wilaya.code)
-      if (Number.isFinite(code)) {
-        wilayaMap.set(code, wilaya.name_fr || "")
-      }
-    })
-
-    const revenueByWilayaMap = new Map<string, number>()
-    for (const order of orders) {
-      const code = Number(order.wilaya_code)
-      const name = wilayaMap.get(code) || "Inconnu"
-      const revenue = getOrderTotalDzd(order)
-      revenueByWilayaMap.set(name, (revenueByWilayaMap.get(name) || 0) + revenue)
-    }
-
-    const revenueByWilaya = Array.from(revenueByWilayaMap.entries())
-      .map(([name, revenue]) => ({ name, revenue }))
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 6)
-
     return (
       <div className="flex flex-col gap-6">
         <div>
           <h1 className="font-heading text-2xl font-bold text-foreground">Tableau de bord</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Bienvenue dans le panneau d{"'"}administration de Nutrition Store
+            Vue opérationnelle de votre activité Edigiya
           </p>
         </div>
 
@@ -235,21 +202,6 @@ export default async function AdminDashboard() {
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
                     <kpi.icon className="h-5 w-5" />
                   </div>
-                </div>
-                <div className="mt-3 flex items-center gap-1.5">
-                  {kpi.trend === "up" ? (
-                    <TrendingUp className="h-3.5 w-3.5 text-green-600" />
-                  ) : (
-                    <TrendingDown className="h-3.5 w-3.5 text-red-500" />
-                  )}
-                  <span
-                    className={`text-xs font-medium ${
-                      kpi.trend === "up" ? "text-green-600" : "text-red-500"
-                    }`}
-                  >
-                    {kpi.change}
-                  </span>
-                  <span className="text-xs text-muted-foreground">vs median</span>
                 </div>
               </CardContent>
             </Card>
@@ -290,7 +242,6 @@ export default async function AdminDashboard() {
         <MarketCharts
           topBrands={topBrands}
           topProducts={topProducts}
-          revenueByWilaya={revenueByWilaya}
         />
 
         {/* Recent Orders + Low Stock */}
@@ -409,7 +360,7 @@ export default async function AdminDashboard() {
         <div>
           <h1 className="font-heading text-2xl font-bold text-foreground">Tableau de bord</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Bienvenue dans le panneau d{"'"}administration de Nutrition Store
+            Vue opérationnelle de votre activité Edigiya
           </p>
         </div>
         <Card className="border-border border-red-200 bg-red-50 dark:border-red-900/30 dark:bg-red-900/10">

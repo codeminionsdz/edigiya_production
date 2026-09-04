@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation"
+import type { Metadata } from "next"
 import { getProductBySlug } from "@/lib/repositories"
 import { ProductPageClient } from "./client"
 import type { Product } from "@/lib/data"
@@ -27,14 +28,28 @@ function transformProduct(dbProduct: any): Product {
     inStock: dbProduct.stock > 0,
     stockCount: dbProduct.stock,
     specs: (dbProduct.product_specs || []).reduce((acc: Record<string, string>, spec: any) => {
-      acc[spec.key] = spec.value_fr // Use FR for now, client can handle locale later
+      if (spec.key && spec.value_fr) acc[spec.key] = spec.value_fr
       return acc
     }, {}),
+    specsAr: (dbProduct.product_specs || []).reduce((acc: Record<string, string>, spec: any) => {
+      if (spec.key && spec.value_ar) acc[spec.key] = spec.value_ar
+      return acc
+    }, {}),
+    variants: (dbProduct.product_variants || []).map((variant: any) => ({ id: variant.id, name: variant.name || "", value: variant.value || "", priceDelta: Number(variant.price_delta_dzd || 0), stock: variant.stock == null ? null : Number(variant.stock) })),
     tags: [], // TODO: implement tags
     isNew: false, // TODO: implement based on created_at
     isBestSeller: false, // TODO: implement based on sales
-    isDeal: dbProduct.compare_at_price_dzd ? true : false,
+    isDeal: Boolean(dbProduct.compare_at_price_dzd && dbProduct.compare_at_price_dzd > dbProduct.price_dzd),
   }
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params
+  const product: any = await getProductBySlug(slug).catch(() => null)
+  if (!product) return { title: "Produit | Edigiya" }
+  const title = product.title_fr || "Produit"
+  const description = product.description_fr || `Découvrez ${title} chez Edigiya.`
+  return { title: `${title} | Edigiya`, description, openGraph: { title, description, images: product.product_images?.[0]?.url ? [product.product_images[0].url] : undefined } }
 }
 
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {

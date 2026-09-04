@@ -153,6 +153,7 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 ADMIN_PANEL_PASSWORD=your_secure_password
+ADMIN_SESSION_SECRET=your_long_random_session_secret
 ```
 
 ## 10. Deployment Verification

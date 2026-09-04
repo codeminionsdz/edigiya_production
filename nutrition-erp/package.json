@@ -1,0 +1,38 @@
+{
+  "name": "nutrition-erp",
+  "version": "0.1.0",
+  "description": "Desktop ERP system for nutrition business with FIFO stock management",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:desktop": "tauri dev",
+    "build": "vite build",
+    "build:desktop": "tauri build",
+    "preview": "vite preview",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint . --ext .ts,.tsx",
+    "format": "prettier --write .",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.38.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "zustand": "^4.4.1",
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/api": "^1.5.0",
+    "@tauri-apps/cli": "^1.5.0",
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "@vitejs/plugin-react": "^4.0.0",
+    "eslint": "^8.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.0.0",
+    "vite": "^4.4.0"
+  }
+}

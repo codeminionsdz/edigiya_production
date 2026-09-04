@@ -2,6 +2,7 @@
 
 import * as repo from '@/lib/repositories';
 import { cookies } from 'next/headers';
+import { getAuthenticatedCustomerSessionId } from './auth-actions';
 
 const LEGACY_TECH_DEPARTMENT_SLUGS = new Set([
   'informatique',
@@ -294,7 +295,15 @@ export async function getOrdersBySession(sessionId: string) {
     console.log('🔍 getOrdersBySession - Session ID:', sessionId);
     const result = await repo.getOrders({ sessionId, limit: 100 });
     console.log('🔍 getOrdersBySession - Result:', result);
-    return result.orders;
+    return result.orders.map((order: any) => {
+      if (order.delivery_method !== 'digital') return order;
+      const payment = order.payments?.[0];
+      const fulfillment = order.order_fulfillments?.[0];
+      if (fulfillment?.status === 'delivered') return { ...order, status: 'delivered' };
+      if (fulfillment?.status === 'failed' || fulfillment?.status === 'cancelled') return { ...order, status: 'cancelled' };
+      if (payment?.status === 'paid') return { ...order, status: 'processing' };
+      return order;
+    });
   } catch (error: any) {
     console.error('Failed to get orders:', error);
     return [];
@@ -303,8 +312,7 @@ export async function getOrdersBySession(sessionId: string) {
 
 export async function getMyOrders() {
   try {
-    const cookieStore = await cookies();
-    const sessionId = cookieStore.get('session_id')?.value;
+    const sessionId = await getAuthenticatedCustomerSessionId();
     
     console.log('🔍 getMyOrders - Session ID from server:', sessionId);
     
@@ -315,7 +323,15 @@ export async function getMyOrders() {
     
     const result = await repo.getOrders({ sessionId, limit: 100 });
     console.log('🔍 getMyOrders - Result:', result);
-    return result.orders;
+    return result.orders.map((order: any) => {
+      if (order.delivery_method !== 'digital') return order;
+      const payment = order.payments?.[0];
+      const fulfillment = order.order_fulfillments?.[0];
+      if (fulfillment?.status === 'delivered') return { ...order, status: 'delivered' };
+      if (fulfillment?.status === 'failed' || fulfillment?.status === 'cancelled') return { ...order, status: 'cancelled' };
+      if (payment?.status === 'paid') return { ...order, status: 'processing' };
+      return order;
+    });
   } catch (error: any) {
     console.error('Failed to get my orders:', error);
     return [];
@@ -324,8 +340,7 @@ export async function getMyOrders() {
 
 export async function getOrderById(orderId: string) {
   try {
-    const cookieStore = await cookies();
-    const sessionId = cookieStore.get('session_id')?.value;
+    const sessionId = await getAuthenticatedCustomerSessionId();
     
     console.log('🔍 getOrderById - Session ID:', sessionId, 'Order ID:', orderId);
     
@@ -335,13 +350,7 @@ export async function getOrderById(orderId: string) {
     }
     
     // Get the order
-    const order = await repo.getOrderById(orderId);
-    
-    // Verify the order belongs to this session
-    if (order.session_id !== sessionId) {
-      console.log('❌ getOrderById - Order does not belong to this session');
-      return null;
-    }
+    const order = await repo.getCustomerOrderById(orderId, sessionId);
     
     console.log('🔍 getOrderById - Order:', order);
     return order;
@@ -351,14 +360,24 @@ export async function getOrderById(orderId: string) {
   }
 }
 
+export async function getDeliveredFulfillmentItems(orderId: string) {
+  try {
+    const sessionId = await getAuthenticatedCustomerSessionId();
+    if (!sessionId) return [];
+    return await repo.getCustomerFulfillmentItems(orderId, sessionId);
+  } catch (error) {
+    console.error('Failed to get delivered fulfillment items:', error);
+    return [];
+  }
+}
+
 // ============================================================================
 // CUSTOMER PROFILE OPERATIONS
 // ============================================================================
 
 export async function getMyProfile() {
   try {
-    const cookieStore = await cookies();
-    const sessionId = cookieStore.get('session_id')?.value;
+    const sessionId = await getAuthenticatedCustomerSessionId();
     
     if (!sessionId) {
       return null;
@@ -373,8 +392,7 @@ export async function getMyProfile() {
 
 export async function updateMyProfile(formData: FormData) {
   try {
-    const cookieStore = await cookies();
-    const sessionId = cookieStore.get('session_id')?.value;
+    const sessionId = await getAuthenticatedCustomerSessionId();
     
     if (!sessionId) {
       return { error: 'Session non trouvée' };

@@ -562,7 +562,7 @@ export function AnalyticsClient({
 
         <Card className="border-border">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base font-semibold text-foreground">Revenu par wilaya</CardTitle>
+            <CardTitle className="text-base font-semibold text-foreground">Revenu par zone</CardTitle>
           </CardHeader>
           <CardContent>
             {revenueByWilaya.length === 0 ? (

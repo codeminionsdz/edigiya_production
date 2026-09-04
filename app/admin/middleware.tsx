@@ -1,14 +1,11 @@
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { isAdminAuthenticated } from '@/lib/admin-auth';
 
 export async function withAdminAuth<T extends (...args: any[]) => any>(
   fn: T,
   ...args: Parameters<T>
 ): Promise<ReturnType<T>> {
-  const cookieStore = await cookies();
-  const session = cookieStore.get('admin_session');
-
-  if (!session) {
+  if (!(await isAdminAuthenticated())) {
     redirect('/admin/login');
   }
 
@@ -16,7 +13,5 @@ export async function withAdminAuth<T extends (...args: any[]) => any>(
 }
 
 export async function checkAdminAuth(): Promise<boolean> {
-  const cookieStore = await cookies();
-  const session = cookieStore.get('admin_session');
-  return !!session;
+  return isAdminAuthenticated();
 }

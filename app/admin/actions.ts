@@ -7,6 +7,7 @@ import {
   destroyAdminSession,
 } from '@/lib/admin-auth';
 import * as repo from '@/lib/repositories';
+import { verifyManualPayment, rejectManualPayment } from '@/lib/payments/service';
 import { redirect } from 'next/navigation';
 import { revalidatePath, revalidateTag } from 'next/cache';
 
@@ -925,6 +926,32 @@ export async function adminGetOrderById(id: string) {
   }
 }
 
+export async function adminVerifyPayment(paymentId: string, note?: string) {
+  if (!(await isAdminAuthenticated())) throw new Error('Unauthorized');
+  try { return { success: true, payment: await verifyManualPayment(paymentId, note) }; } catch (error: any) {
+    console.error('adminVerifyPayment failed:', error);
+    return { success: false, error: String(error?.message).includes('STATE_CONFLICT') ? 'Ce paiement a déjà été traité ou n’est plus disponible.' : 'Impossible de traiter ce paiement.' };
+  }
+}
+
+export async function adminRejectPayment(paymentId: string, reason: string) {
+  if (!(await isAdminAuthenticated())) throw new Error('Unauthorized');
+  try { return { success: true, payment: await rejectManualPayment(paymentId, reason) }; } catch (error: any) {
+    console.error('adminRejectPayment failed:', error);
+    return { success: false, error: String(error?.message).includes('STATE_CONFLICT') ? 'Ce paiement a déjà été traité ou n’est plus disponible.' : String(error?.message).includes('raison') ? 'Indiquez la raison du rejet.' : 'Impossible de traiter ce paiement.' };
+  }
+}
+
+export async function adminGetPaymentProofUrl(paymentId: string, orderId: string) {
+  if (!(await isAdminAuthenticated())) throw new Error('Unauthorized');
+  try {
+    return { success: true, url: await repo.getAdminPaymentProofSignedUrl(paymentId, orderId) };
+  } catch (error) {
+    console.error('adminGetPaymentProofUrl failed:', error);
+    return { success: false, error: 'Le justificatif n’est plus disponible.' };
+  }
+}
+
 export async function adminUpdateOrderStatus(
   id: string,
   data: {
@@ -940,6 +967,50 @@ export async function adminUpdateOrderStatus(
   } catch (error: any) {
     return { error: error.message };
   }
+}
+
+export async function adminDeliverOrder(orderId: string) {
+  if (!(await isAdminAuthenticated())) throw new Error('Unauthorized');
+  try {
+    const result = await repo.adminDeliverOrder(orderId, 'admin');
+    revalidatePath(`/admin/orders/${orderId}`);
+    revalidatePath(`/account/orders/${orderId}`);
+    return { success: true, fulfillment: result };
+  } catch (error: any) {
+    console.error('adminDeliverOrder failed:', error);
+    const message = String(error?.message || '');
+    return { success: false, error: message.includes('DIGITAL_FULFILLMENT_NOT_ELIGIBLE') ? 'Cette commande n’est pas éligible à la livraison digitale.' : message.includes('FULFILLMENT_STATE_CONFLICT') ? 'Cette commande a déjà été livrée ou ne peut plus être livrée.' : 'Impossible de livrer cette commande.' };
+  }
+}
+
+export async function adminGetFulfillmentItems(fulfillmentId: string) {
+  if (!(await isAdminAuthenticated())) throw new Error('Unauthorized');
+  try { return { success: true, items: await repo.adminGetFulfillmentItems(fulfillmentId) }; }
+  catch (error) { console.error('adminGetFulfillmentItems failed:', error); return { success: false, error: 'Contenu indisponible.', items: [] }; }
+}
+
+export async function adminPrepareFulfillment(orderId: string) {
+  if (!(await isAdminAuthenticated())) throw new Error('Unauthorized');
+  try { return { success: true, fulfillment: await repo.adminPrepareFulfillment(orderId) }; }
+  catch (error) { console.error('adminPrepareFulfillment failed:', error); return { success: false, error: 'La livraison digitale n’est pas disponible pour cette commande.' }; }
+}
+
+export async function adminAddFulfillmentItem(input: { fulfillmentId: string; type: 'file' | 'link' | 'code' | 'manual'; title: string; description?: string; url?: string; code?: string; message?: string; file?: File }) {
+  if (!(await isAdminAuthenticated())) throw new Error('Unauthorized');
+  try { return { success: true, item: await repo.adminAddFulfillmentItem(input) }; }
+  catch (error) { console.error('adminAddFulfillmentItem failed:', error); return { success: false, error: 'Impossible d’ajouter ce contenu.' }; }
+}
+
+export async function adminUpdateFulfillmentItem(itemId: string, input: { title: string; description?: string; url?: string; code?: string; message?: string }) {
+  if (!(await isAdminAuthenticated())) throw new Error('Unauthorized');
+  try { return { success: true, item: await repo.adminUpdateFulfillmentItem(itemId, input) }; }
+  catch (error) { console.error('adminUpdateFulfillmentItem failed:', error); return { success: false, error: 'Impossible de modifier ce contenu.' }; }
+}
+
+export async function adminDeleteFulfillmentItem(itemId: string) {
+  if (!(await isAdminAuthenticated())) throw new Error('Unauthorized');
+  try { return await repo.adminDeleteFulfillmentItem(itemId); }
+  catch (error) { console.error('adminDeleteFulfillmentItem failed:', error); return { success: false, error: 'Impossible de supprimer ce contenu.' }; }
 }
 
 export async function adminGetOrderItemsAnalytics(limit?: number) {
@@ -1184,4 +1255,3 @@ export async function adminDeleteMarqueeBrand(id: string) {
     return { error: error.message };
   }
 }
-

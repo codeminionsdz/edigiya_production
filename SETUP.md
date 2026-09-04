@@ -38,6 +38,7 @@ SUPABASE_SERVICE_ROLE_KEY=eyJ...your_service_role_key
 
 # Admin Panel
 ADMIN_PANEL_PASSWORD=YourSecurePassword123!
+ADMIN_SESSION_SECRET=replace_with_a_long_random_secret
 ```
 
 ### 3. Run Database Migrations
@@ -201,6 +202,7 @@ NEXT_PUBLIC_SUPABASE_URL = https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY = eyJ...
 SUPABASE_SERVICE_ROLE_KEY = eyJ...
 ADMIN_PANEL_PASSWORD = YourSecurePassword123!
+ADMIN_SESSION_SECRET = replace_with_a_long_random_secret
 TELEGRAM_BOT_TOKEN = <your-telegram-bot-token>
 TELEGRAM_CHAT_ID = <your-admin-chat-id>
 ```

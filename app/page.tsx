@@ -1,31 +1,5 @@
-"use client"
-
-import { HomeHeroText } from "@/components/store/home-hero-text"
-import { BrandMarquee } from "@/components/store/brand-marquee"
-import {
-  DepartmentsGrid,
-  FeaturedProducts,
-  TrustSection,
-  TestimonialsSection,
-  NewsletterSection,
-} from "@/components/store/home-sections"
-import { StoreNavbar } from "@/components/store/store-navbar"
-import { Footer } from "@/components/store/footer"
+import { EdigiyaHome } from "@/components/store/edigiya-home"
 
 export default function Page() {
-  return (
-    <div className="flex min-h-screen flex-col">
-      <StoreNavbar />
-      <main className="flex-1">
-        <HomeHeroText />
-        <BrandMarquee />
-        <DepartmentsGrid />
-        <FeaturedProducts />
-        <TrustSection />
-        <TestimonialsSection />
-        <NewsletterSection />
-      </main>
-      <Footer />
-    </div>
-  )
+  return <EdigiyaHome />
 }

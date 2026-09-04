@@ -21,6 +21,7 @@ function RegisterForm() {
   const { t } = useLocale()
   const searchParams = useSearchParams()
   const nextPath = searchParams.get("next") || "/account"
+  const checkoutEmail = searchParams.get("email") || ""
   const [state, formAction, isPending] = useActionState(registerCustomer, initialState)
 
   return (
@@ -34,23 +35,23 @@ function RegisterForm() {
           <div className="mb-8 text-center">
             <Link href="/" className="mb-4 inline-flex items-center gap-2">
               <img
-                src="/brand/logo.jpg"
-                alt="Nutrition Store"
+                src="/brand/edigiya-logo-light.svg"
+                alt="Edigiya Store DZ"
                 width={160}
                 height={50}
                 className="h-10 w-auto object-contain dark:hidden"
               />
               <img
-                src="/brand/logo.jpg"
-                alt="Nutrition Store"
+                src="/brand/edigiya-logo-light.svg"
+                alt="Edigiya Store DZ"
                 width={160}
                 height={50}
                 className="hidden h-10 w-auto object-contain dark:block"
               />
             </Link>
-            <h1 className="font-heading text-2xl font-bold text-foreground">{t.nav.register}</h1>
+            <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground">Rejoignez Edigiya.</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Creez votre compte Nutrition Store
+              Créez votre espace client en quelques instants.
             </p>
           </div>
 
@@ -75,7 +76,7 @@ function RegisterForm() {
               <Label htmlFor="email">{t.checkout.email}</Label>
               <div className="relative mt-1.5">
                 <Mail className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input id="email" name="email" type="email" placeholder="email@example.com" className="ps-10" required />
+                <Input id="email" name="email" type="email" defaultValue={checkoutEmail} placeholder="email@example.com" className="ps-10" required />
               </div>
             </div>
 
@@ -152,5 +153,3 @@ export default function RegisterPage() {
     </Suspense>
   )
 }
-
-

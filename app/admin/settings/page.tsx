@@ -206,6 +206,16 @@ export default function AdminSettingsPage() {
                 </div>
               </CardContent>
             </Card>
+            <Card className="border-border lg:col-span-2">
+              <CardHeader><CardTitle className="text-base">Paiements manuels</CardTitle></CardHeader>
+              <CardContent className="grid gap-4 md:grid-cols-2">
+                <div><Label>Numéro Flexy</Label><Input className="mt-1.5" value={settings.flexyNumber} onChange={(e) => setField("flexyNumber", e.target.value)} /></div>
+                <div><Label>Lien Telegram</Label><Input className="mt-1.5" value={settings.telegramLink} onChange={(e) => setField("telegramLink", e.target.value)} /></div>
+                <div><Label>Instructions Flexy</Label><Textarea className="mt-1.5" rows={3} value={settings.flexyInstructions} onChange={(e) => setField("flexyInstructions", e.target.value)} /></div>
+                <div><Label>Instructions CCP</Label><Textarea className="mt-1.5" rows={3} value={settings.ccpInstructions} onChange={(e) => setField("ccpInstructions", e.target.value)} /></div>
+                <div className="md:col-span-2"><Label>Instructions virement bancaire</Label><Textarea className="mt-1.5" rows={3} value={settings.bankInstructions} onChange={(e) => setField("bankInstructions", e.target.value)} /></div>
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
 

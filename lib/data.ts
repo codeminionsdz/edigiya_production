@@ -16,9 +16,19 @@
   stockCount: number
   specs: Record<string, string>
   tags: string[]
+  variants?: ProductVariant[]
+  specsAr?: Record<string, string>
   isNew?: boolean
   isBestSeller?: boolean
   isDeal?: boolean
+}
+
+export interface ProductVariant {
+  id: string
+  name: string
+  value: string
+  priceDelta: number
+  stock: number | null
 }
 
 export interface Subcategory {

@@ -34,23 +34,23 @@ function LoginForm() {
           <div className="mb-8 text-center">
             <Link href="/" className="mb-4 inline-flex items-center gap-2">
               <img
-                src="/brand/logo.jpg"
-                alt="Nutrition Store"
+                src="/brand/edigiya-logo-light.svg"
+                alt="Edigiya Store DZ"
                 width={160}
                 height={50}
                 className="h-10 w-auto object-contain dark:hidden"
               />
               <img
-                src="/brand/logo.jpg"
-                alt="Nutrition Store"
+                src="/brand/edigiya-logo-light.svg"
+                alt="Edigiya Store DZ"
                 width={160}
                 height={50}
                 className="hidden h-10 w-auto object-contain dark:block"
               />
             </Link>
-            <h1 className="font-heading text-2xl font-bold text-foreground">{t.nav.login}</h1>
+            <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground">Bienvenue chez Edigiya.</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Connectez-vous a votre compte
+              Retrouvez vos commandes et vos informations.
             </p>
           </div>
 
@@ -123,5 +123,4 @@ export default function LoginPage() {
     </Suspense>
   )
 }
-
 

@@ -1,6 +1,11 @@
 // ComputerHouse Next.js Configuration
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "10mb",
+    },
+  },
   typescript: {
     ignoreBuildErrors: true,
   },

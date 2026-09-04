@@ -25,30 +25,25 @@ const siteUrl = getSiteUrl()
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: "Nutrition Store - Premium Supplements",
+  title: "Edigiya — Digital, made simple",
   description:
-    "Nutrition Store, supplements premium pour force, performance et recuperation. Livraison nationale rapide.",
+    "Edigiya simplifie la découverte et l’achat de produits et services numériques.",
   keywords: [
-    "Nutrition Store",
-    "supplements",
-    "whey protein",
-    "pre workout",
-    "creatine",
-    "fitness",
+    "Edigiya",
+    "produits numériques",
+    "services numériques",
   ],
   openGraph: {
-    title: "Nutrition Store - Premium Supplements",
-    description:
-      "Supplements premium pour force, performance et recuperation. Livraison nationale rapide.",
+    title: "Edigiya — Digital, made simple",
+    description: "Edigiya simplifie la découverte et l’achat de produits et services numériques.",
     url: siteUrl,
-    siteName: "Nutrition Store",
+    siteName: "Edigiya",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Nutrition Store - Premium Supplements",
-    description:
-      "Supplements premium pour force, performance et recuperation. Livraison nationale rapide.",
+    title: "Edigiya — Digital, made simple",
+    description: "Edigiya simplifie la découverte et l’achat de produits et services numériques.",
   },
 }
 

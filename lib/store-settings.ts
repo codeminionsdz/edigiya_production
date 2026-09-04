@@ -12,9 +12,16 @@ export type StoreSettings = {
   facebook: string
   instagram: string
   tiktok: string
+  flexyNumber: string
+  flexyInstructions: string
+  ccpInstructions: string
+  bankInstructions: string
+  telegramLink: string
 }
 
 export const STORE_SETTINGS_STORAGE_KEY = "admin_store_settings_v1"
+export const MESSENGER_CONTACT_URL = "https://www.messenger.com/t/985336287994240"
+export const TELEGRAM_CONTACT_URL = "https://t.me/edigiyadz"
 
 export const DEFAULT_STORE_SETTINGS: StoreSettings = {
   storeName: "Nutrition Store",
@@ -31,6 +38,11 @@ export const DEFAULT_STORE_SETTINGS: StoreSettings = {
   facebook: "https://www.facebook.com/share/17EXkJSApU/?mibextid=wwXIfr",
   instagram: "https://www.instagram.com/computer.house.41?igsh=Y2d0MTBndjA1YWM4",
   tiktok: "https://www.tiktok.com/@reffaskhalil?_r=1&_t=ZS-93tDkToF1T2",
+  flexyNumber: "",
+  flexyInstructions: "",
+  ccpInstructions: "",
+  bankInstructions: "",
+  telegramLink: TELEGRAM_CONTACT_URL,
 }
 
 export async function fetchStoreSettings(): Promise<StoreSettings> {
@@ -58,9 +70,14 @@ export async function fetchStoreSettings(): Promise<StoreSettings> {
       mapLink: String(data.map_link || data.mapLink || DEFAULT_STORE_SETTINGS.mapLink),
       mapEmbed: String(data.map_embed || data.mapEmbed || DEFAULT_STORE_SETTINGS.mapEmbed),
       workingHours: String(data.working_hours || data.workingHours || DEFAULT_STORE_SETTINGS.workingHours),
-      facebook: String(data.facebook || DEFAULT_STORE_SETTINGS.facebook),
+      facebook: MESSENGER_CONTACT_URL,
       instagram: String(data.instagram || DEFAULT_STORE_SETTINGS.instagram),
       tiktok: String(data.tiktok || DEFAULT_STORE_SETTINGS.tiktok),
+      flexyNumber: String(data.flexy_number || data.flexyNumber || ""),
+      flexyInstructions: String(data.flexy_instructions || data.flexyInstructions || ""),
+      ccpInstructions: String(data.ccp_instructions || data.ccpInstructions || ""),
+      bankInstructions: String(data.bank_instructions || data.bankInstructions || ""),
+      telegramLink: String(data.telegram_link || data.telegramLink || TELEGRAM_CONTACT_URL),
     }
 
     saveStoreSettings(settings)
@@ -97,9 +114,14 @@ export async function saveStoreSettingsToServer(settings: StoreSettings) {
     mapLink: String(data.map_link || data.mapLink || DEFAULT_STORE_SETTINGS.mapLink),
     mapEmbed: String(data.map_embed || data.mapEmbed || DEFAULT_STORE_SETTINGS.mapEmbed),
     workingHours: String(data.working_hours || data.workingHours || DEFAULT_STORE_SETTINGS.workingHours),
-    facebook: String(data.facebook || DEFAULT_STORE_SETTINGS.facebook),
+    facebook: MESSENGER_CONTACT_URL,
     instagram: String(data.instagram || DEFAULT_STORE_SETTINGS.instagram),
     tiktok: String(data.tiktok || DEFAULT_STORE_SETTINGS.tiktok),
+    flexyNumber: String(data.flexy_number || data.flexyNumber || ""),
+    flexyInstructions: String(data.flexy_instructions || data.flexyInstructions || ""),
+    ccpInstructions: String(data.ccp_instructions || data.ccpInstructions || ""),
+    bankInstructions: String(data.bank_instructions || data.bankInstructions || ""),
+    telegramLink: String(data.telegram_link || data.telegramLink || TELEGRAM_CONTACT_URL),
   }
 
   saveStoreSettings(serverSettings)

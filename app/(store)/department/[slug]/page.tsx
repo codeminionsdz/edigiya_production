@@ -127,7 +127,7 @@ export default async function DepartmentPage({
               href={`/department/${encodeURIComponent(department.slug)}`}
               className={`group rounded-xl border p-4 transition-all ${
                 !activeCategory
-                  ? "min-w-[78%] snap-start border-primary/70 bg-primary/10 shadow-[0_10px_26px_-18px_rgba(255,214,0,0.75)] sm:min-w-0"
+                  ? "min-w-[78%] snap-start border-primary/70 bg-primary/10 shadow-[0_10px_26px_-18px_rgba(45,170,34,0.22)] sm:min-w-0"
                   : "min-w-[78%] snap-start border-border bg-background/70 hover:border-primary/40 sm:min-w-0"
               }`}
             >
@@ -143,7 +143,7 @@ export default async function DepartmentPage({
                 href={`/department/${encodeURIComponent(department.slug)}?category=${encodeURIComponent(category.slug)}`}
                 className={`group min-w-[78%] snap-start rounded-xl border p-4 transition-all sm:min-w-0 ${
                   activeCategory?.id === category.id
-                    ? "border-primary/70 bg-primary/10 shadow-[0_10px_26px_-18px_rgba(255,214,0,0.75)]"
+                    ? "border-primary/70 bg-primary/10 shadow-[0_10px_26px_-18px_rgba(45,170,34,0.22)]"
                     : "border-border bg-background/70 hover:border-primary/40"
                 }`}
               >
