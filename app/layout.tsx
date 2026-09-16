@@ -26,6 +26,11 @@ const siteUrl = getSiteUrl()
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: "Edigiya — Digital, made simple",
+  icons: {
+    icon: "/brand/edigiya-mark.svg",
+    shortcut: "/brand/edigiya-mark.svg",
+    apple: "/brand/edigiya-mark.svg",
+  },
   description:
     "Edigiya simplifie la découverte et l’achat de produits et services numériques.",
   keywords: [
