@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Storefront-only image treatment. Originals remain unchanged in storage/admin. */
+.store-product-image {
+  filter: blur(1.35px);
+  transform: scale(1.015);
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;

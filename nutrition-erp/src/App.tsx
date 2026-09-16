@@ -1,37 +1,37 @@
-import { useState, useEffect } from 'react'
-import './App.css'
-import { getCashBalance } from './services'
+import { useState, useEffect } from "react";
+import "./App.css";
+import { getCashBalance } from "./services";
 
 function App() {
-  const [count, setCount] = useState(0)
-  const [cashBalance, setCashBalance] = useState<number | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [isDevMode, setIsDevMode] = useState(false)
+  const [count, setCount] = useState(0);
+  const [cashBalance, setCashBalance] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isDevMode, setIsDevMode] = useState(false);
 
   useEffect(() => {
     // Detect if using mock database (dev mode)
     const isPlaceholder =
-      (process.env.VITE_SUPABASE_URL?.includes('your-project')) ||
-      (process.env.VITE_SUPABASE_ANON_KEY?.includes('your-anon-key'))
-    
-    setIsDevMode(!!isPlaceholder)
+      process.env.VITE_SUPABASE_URL?.includes("your-project") ||
+      process.env.VITE_SUPABASE_ANON_KEY?.includes("your-anon-key");
+
+    setIsDevMode(!!isPlaceholder);
 
     // Load cash balance
     const loadCashBalance = async () => {
       try {
-        const result = await getCashBalance()
+        const result = await getCashBalance();
         if (result.success) {
-          setCashBalance(result.data)
+          setCashBalance(result.data ?? null);
         }
       } catch (error) {
-        console.error('Error loading cash balance:', error)
+        console.error("Error loading cash balance:", error);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    loadCashBalance()
-  }, [])
+    loadCashBalance();
+  }, []);
 
   return (
     <div className="container">
@@ -39,8 +39,16 @@ function App() {
         <h1>🏪 Nutrition ERP System</h1>
         <p>Desktop ERP with FIFO Stock Management</p>
         {isDevMode && (
-          <div style={{ padding: '10px', background: '#fff3cd', marginTop: '10px', borderRadius: '4px' }}>
-            <strong>⚙️ Development Mode:</strong> Using mock database (no Supabase configured)
+          <div
+            style={{
+              padding: "10px",
+              background: "#fff3cd",
+              marginTop: "10px",
+              borderRadius: "4px",
+            }}
+          >
+            <strong>⚙️ Development Mode:</strong> Using mock database (no
+            Supabase configured)
           </div>
         )}
       </header>
@@ -51,7 +59,9 @@ function App() {
           <div className="status-grid">
             <div className="status-item">
               <span className="status-label">Database</span>
-              <span className="status-value">{isDevMode ? '✅ Mock (Dev)' : '⏳ Connecting...'}</span>
+              <span className="status-value">
+                {isDevMode ? "✅ Mock (Dev)" : "⏳ Connecting..."}
+              </span>
             </div>
             <div className="status-item">
               <span className="status-label">Services</span>
@@ -70,9 +80,15 @@ function App() {
             <div className="status-item">
               <span className="status-label">Current Balance</span>
               <span className="status-value">
-                {loading ? '⏳ Loading...' : (
+                {loading ? (
+                  "⏳ Loading..."
+                ) : (
                   <>
-                    ${(cashBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    $
+                    {(cashBalance || 0).toLocaleString("en-US", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
                   </>
                 )}
               </span>
@@ -100,10 +116,18 @@ function App() {
         <section className="info-section">
           <h3>📖 Documentation</h3>
           <ul>
-            <li><a href="#">Start Here (00_START_HERE.md)</a></li>
-            <li><a href="#">Transactional Safety Guide</a></li>
-            <li><a href="#">Deployment Checklist</a></li>
-            <li><a href="#">API Reference</a></li>
+            <li>
+              <a href="#">Start Here (00_START_HERE.md)</a>
+            </li>
+            <li>
+              <a href="#">Transactional Safety Guide</a>
+            </li>
+            <li>
+              <a href="#">Deployment Checklist</a>
+            </li>
+            <li>
+              <a href="#">API Reference</a>
+            </li>
           </ul>
         </section>
       </main>
@@ -112,7 +136,7 @@ function App() {
         <p>Nutrition ERP v0.1.0 • TypeScript + React + Tauri</p>
       </footer>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;

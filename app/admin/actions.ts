@@ -1,55 +1,60 @@
-'use server';
+"use server";
 
 import {
   isAdminAuthenticated,
   verifyAdminPassword,
   createAdminSession,
   destroyAdminSession,
-} from '@/lib/admin-auth';
-import * as repo from '@/lib/repositories';
-import { verifyManualPayment, rejectManualPayment } from '@/lib/payments/service';
-import { redirect } from 'next/navigation';
-import { revalidatePath, revalidateTag } from 'next/cache';
+} from "@/lib/admin-auth";
+import * as repo from "@/lib/repositories";
+import {
+  verifyManualPayment,
+  rejectManualPayment,
+} from "@/lib/payments/service";
+import { redirect } from "next/navigation";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 function revalidateTaxonomyTag() {
-  revalidateTag('taxonomy', 'max');
+  revalidateTag("taxonomy", "max");
 }
 
 const LEGACY_TECH_DEPARTMENT_SLUGS = new Set([
-  'informatique',
-  'electronique',
-  'accessoires',
-  'pcs-gaming',
-  'laptops',
-  'composants',
-  'moniteurs',
-  'apple',
-  'cameras',
-  'reseau',
-  'imprimantes',
-  'bureautique',
-  'peripheriques',
-  'stockage',
-  'chaises-bureaux',
+  "informatique",
+  "electronique",
+  "accessoires",
+  "pcs-gaming",
+  "laptops",
+  "composants",
+  "moniteurs",
+  "apple",
+  "cameras",
+  "reseau",
+  "imprimantes",
+  "bureautique",
+  "peripheriques",
+  "stockage",
+  "chaises-bureaux",
 ]);
 
 const LEGACY_TECH_HINTS = [
-  'info',
-  'electron',
-  'gaming',
-  'laptop',
-  'monitor',
-  'camera',
-  'reseau',
-  'imprimante',
-  'bureau',
-  'peripher',
-  'stockage',
-  'apple',
+  "info",
+  "electron",
+  "gaming",
+  "laptop",
+  "monitor",
+  "camera",
+  "reseau",
+  "imprimante",
+  "bureau",
+  "peripher",
+  "stockage",
+  "apple",
 ];
 
 function normalizeText(value: string | null | undefined) {
-  return String(value || '').trim().toLowerCase();
+  return String(value || "")
+    .trim()
+    .toLowerCase();
 }
 
 function isLegacyTechDepartment(department: {
@@ -67,11 +72,15 @@ function isLegacyTechDepartment(department: {
 }
 
 const DEFAULT_SUPPLEMENT_DEPARTMENTS = [
-  { slug: 'proteines', name_fr: 'Proteines', name_ar: 'بروتينات' },
-  { slug: 'performance', name_fr: 'Performance', name_ar: 'الاداء' },
-  { slug: 'recuperation', name_fr: 'Recuperation', name_ar: 'الاستشفاء' },
-  { slug: 'controle-poids', name_fr: 'Controle du poids', name_ar: 'التحكم في الوزن' },
-  { slug: 'bien-etre', name_fr: 'Bien-etre', name_ar: 'الصحة العامة' },
+  { slug: "proteines", name_fr: "Proteines", name_ar: "بروتينات" },
+  { slug: "performance", name_fr: "Performance", name_ar: "الاداء" },
+  { slug: "recuperation", name_fr: "Recuperation", name_ar: "الاستشفاء" },
+  {
+    slug: "controle-poids",
+    name_fr: "Controle du poids",
+    name_ar: "التحكم في الوزن",
+  },
+  { slug: "bien-etre", name_fr: "Bien-etre", name_ar: "الصحة العامة" },
 ];
 
 async function seedDefaultDepartmentsIfEmpty() {
@@ -94,7 +103,10 @@ async function seedDefaultDepartmentsIfEmpty() {
       created += 1;
     } catch (error: any) {
       // Ignore duplicate/create races and continue.
-      console.warn('seedDefaultDepartmentsIfEmpty create failed:', error?.message || error);
+      console.warn(
+        "seedDefaultDepartmentsIfEmpty create failed:",
+        error?.message || error,
+      );
     }
   }
 
@@ -109,16 +121,16 @@ async function seedDefaultDepartmentsIfEmpty() {
 export async function loginAdmin(password: string) {
   const isValid = await verifyAdminPassword(password);
   if (!isValid) {
-    return { error: 'Invalid password' };
+    return { error: "Invalid password" };
   }
 
   await createAdminSession();
-  redirect('/admin');
+  redirect("/admin");
 }
 
 export async function logoutAdmin() {
   await destroyAdminSession();
-  redirect('/admin/login');
+  redirect("/admin/login");
 }
 
 export async function checkAdminAuth() {
@@ -135,9 +147,11 @@ export async function adminGetDepartments() {
   }
   try {
     const departments = await repo.getDepartments(true);
-    return (departments || []).filter((department: any) => !isLegacyTechDepartment(department));
+    return (departments || []).filter(
+      (department: any) => !isLegacyTechDepartment(department),
+    );
   } catch (error: any) {
-    console.error('adminGetDepartments failed:', error);
+    console.error("adminGetDepartments failed:", error);
     return [];
   }
 }
@@ -152,7 +166,7 @@ export async function adminCreateDepartment(data: {
   is_active?: boolean;
 }) {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
   try {
     const created = await repo.createDepartment(data);
@@ -173,10 +187,10 @@ export async function adminUpdateDepartment(
     image_url?: string;
     sort_order?: number;
     is_active?: boolean;
-  }
+  },
 ) {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
   try {
     const updated = await repo.updateDepartment(id, data);
@@ -189,7 +203,7 @@ export async function adminUpdateDepartment(
 
 export async function adminDeleteDepartment(id: string) {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
   try {
     await repo.deleteDepartment(id);
@@ -202,7 +216,7 @@ export async function adminDeleteDepartment(id: string) {
 
 export async function adminEnsureDefaultDepartments() {
   if (!(await isAdminAuthenticated())) {
-    return { success: false, created: 0, error: 'Unauthorized' };
+    return { success: false, created: 0, error: "Unauthorized" };
   }
 
   try {
@@ -210,8 +224,12 @@ export async function adminEnsureDefaultDepartments() {
     revalidateTaxonomyTag();
     return { success: true, created: seeded.created || 0 };
   } catch (error: any) {
-    console.error('adminEnsureDefaultDepartments failed:', error);
-    return { success: false, created: 0, error: error?.message || 'Failed to seed departments' };
+    console.error("adminEnsureDefaultDepartments failed:", error);
+    return {
+      success: false,
+      created: 0,
+      error: error?.message || "Failed to seed departments",
+    };
   }
 }
 
@@ -226,19 +244,22 @@ export async function adminGetCategories() {
   try {
     return await repo.getCategories();
   } catch (error: any) {
-    console.error('adminGetCategories failed:', error);
+    console.error("adminGetCategories failed:", error);
     return [];
   }
 }
 
-export async function adminGetCategoriesByDepartment(departmentId: string, parentId?: string | null) {
+export async function adminGetCategoriesByDepartment(
+  departmentId: string,
+  parentId?: string | null,
+) {
   if (!(await isAdminAuthenticated())) {
     return [];
   }
   try {
     return await repo.getCategoriesByDepartment(departmentId, parentId);
   } catch (error: any) {
-    console.error('adminGetCategoriesByDepartment failed:', error);
+    console.error("adminGetCategoriesByDepartment failed:", error);
     return [];
   }
 }
@@ -250,7 +271,7 @@ export async function adminGetCategoryPath(categoryId: string) {
   try {
     return await repo.getCategoryPath(categoryId);
   } catch (error: any) {
-    console.error('adminGetCategoryPath failed:', error);
+    console.error("adminGetCategoryPath failed:", error);
     return [];
   }
 }
@@ -265,7 +286,7 @@ export async function adminCreateCategory(data: {
   is_active?: boolean;
 }) {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
   try {
     const created = await repo.createCategory(data);
@@ -286,10 +307,10 @@ export async function adminUpdateCategory(
     name_ar?: string;
     sort_order?: number;
     is_active?: boolean;
-  }
+  },
 ) {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
   try {
     const updated = await repo.updateCategory(id, data);
@@ -302,7 +323,7 @@ export async function adminUpdateCategory(
 
 export async function adminDeleteCategory(id: string) {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
   try {
     await repo.deleteCategory(id);
@@ -321,14 +342,14 @@ export async function adminGetCategoryTree(departmentId: string) {
   try {
     return await repo.getCategoryTreeByDepartment(departmentId);
   } catch (error: any) {
-    console.error('adminGetCategoryTree failed:', error);
+    console.error("adminGetCategoryTree failed:", error);
     return [];
   }
 }
 
 export async function adminToggleCategoryActive(id: string, isActive: boolean) {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
   try {
     const updated = await repo.toggleCategoryActive(id, isActive);
@@ -341,7 +362,7 @@ export async function adminToggleCategoryActive(id: string, isActive: boolean) {
 
 export async function adminCanDeleteCategory(id: string) {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
   try {
     return await repo.canDeleteCategory(id);
@@ -350,21 +371,25 @@ export async function adminCanDeleteCategory(id: string) {
   }
 }
 
-export async function adminSlugExists(slug: string, departmentId: string, excludeId?: string) {
+export async function adminSlugExists(
+  slug: string,
+  departmentId: string,
+  excludeId?: string,
+) {
   if (!(await isAdminAuthenticated())) {
     return false;
   }
   try {
     return await repo.slugExistsInDepartment(slug, departmentId, excludeId);
   } catch (error: any) {
-    console.error('adminSlugExists failed:', error);
+    console.error("adminSlugExists failed:", error);
     return false;
   }
 }
 
 export async function adminMoveCategoryUp(id: string) {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
   try {
     await repo.moveCategoryUp(id);
@@ -377,7 +402,7 @@ export async function adminMoveCategoryUp(id: string) {
 
 export async function adminMoveCategoryDown(id: string) {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
   try {
     await repo.moveCategoryDown(id);
@@ -399,7 +424,7 @@ export async function adminGetBrands() {
   try {
     return await repo.getBrands();
   } catch (error: any) {
-    console.error('adminGetBrands failed:', error);
+    console.error("adminGetBrands failed:", error);
     return [];
   }
 }
@@ -411,7 +436,7 @@ export async function adminCreateBrand(data: {
   is_active?: boolean;
 }) {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
   try {
     return await repo.createBrand(data);
@@ -427,10 +452,10 @@ export async function adminUpdateBrand(
     slug?: string;
     logo_url?: string;
     is_active?: boolean;
-  }
+  },
 ) {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
   try {
     return await repo.updateBrand(id, data);
@@ -441,7 +466,7 @@ export async function adminUpdateBrand(
 
 export async function adminDeleteBrand(id: string) {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
   try {
     await repo.deleteBrand(id);
@@ -470,8 +495,13 @@ type ProductImagePayload = {
 };
 
 type ProductVariantPayload = {
+  id?: string;
   name: string;
   value: string;
+  option_values?: Record<string, string>;
+  price_baridimob_dzd?: number | null;
+  price_flexy_dzd?: number | null;
+  is_active?: boolean;
   price_delta_dzd?: number;
   stock?: number;
 };
@@ -492,10 +522,15 @@ type ProductEditorPayload = {
   brand_id?: string;
   department_id: string;
   category_id: string;
-  price_dzd: number;
+  price_dzd: number | null;
+  price_baridimob_dzd?: number | null;
+  price_flexy_dzd?: number | null;
+  price_slickpay_dzd?: number | null;
   compare_at_price_dzd?: number | null;
   sku?: string;
   stock: number;
+  inventory_type?: "finite" | "unlimited";
+  fulfillment_type?: "file" | "link" | "code" | "credentials" | "manual";
   is_featured?: boolean;
   is_active?: boolean;
   specs?: ProductSpecPayload[];
@@ -504,14 +539,17 @@ type ProductEditorPayload = {
   seo?: ProductSeoPayload;
 };
 
-async function generateUniqueSlug(title: string, excludeId?: string): Promise<string> {
+async function generateUniqueSlug(
+  title: string,
+  excludeId?: string,
+): Promise<string> {
   const baseSlug = title
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9\s-]/g, '') // Remove special chars
-    .replace(/\s+/g, '-') // Replace spaces with hyphens
-    .replace(/-+/g, '-') // Replace multiple hyphens with single
-    .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
+    .replace(/[^a-z0-9\s-]/g, "") // Remove special chars
+    .replace(/\s+/g, "-") // Replace spaces with hyphens
+    .replace(/-+/g, "-") // Replace multiple hyphens with single
+    .replace(/^-|-$/g, ""); // Remove leading/trailing hyphens
 
   let slug = baseSlug;
   let counter = 1;
@@ -535,28 +573,57 @@ function normalizeEditorPayload(data: ProductEditorPayload) {
     department_id: data.department_id,
     category_id: data.category_id,
     price_dzd: data.price_dzd,
+    price_baridimob_dzd: data.price_baridimob_dzd ?? data.price_dzd,
+    price_flexy_dzd: data.price_flexy_dzd ?? data.price_dzd,
+    price_slickpay_dzd: data.price_slickpay_dzd ?? data.price_dzd,
     compare_at_price_dzd: data.compare_at_price_dzd,
     sku: data.sku?.trim(),
     stock: data.stock,
+    inventory_type: data.inventory_type ?? "finite",
+    fulfillment_type: data.fulfillment_type ?? "manual",
     is_featured: data.is_featured ?? false,
     is_active: data.is_active ?? true,
     specs: data.specs || [],
     images: data.images || [],
-    variants: data.variants || [],
+    variants: [],
     seo: data.seo || {},
   };
 }
 
+function normalizedPriceIsMissing(data: ProductEditorPayload) {
+  return data.price_dzd === null || !Number.isFinite(data.price_dzd);
+}
+
 function validateProductRequiredFields(data: ProductEditorPayload) {
-  if (!data.title_fr?.trim()) return 'Le titre FR est requis.';
-  if (!data.department_id) return 'Le departement est requis.';
-  if (!data.category_id) return 'La categorie est requise.';
-  if (!Number.isFinite(data.price_dzd) || data.price_dzd < 0) return 'Le prix est invalide.';
-  if (!Number.isFinite(data.stock) || data.stock < 0) return 'Le stock est invalide.';
+  if (!data.title_fr?.trim()) return "Le titre FR est requis.";
+  if (!data.department_id) return "Le departement est requis.";
+  if (!data.category_id) return "La categorie est requise.";
+  for (const [label, value] of [
+    ["BaridiMob", data.price_baridimob_dzd],
+    ["Flexy", data.price_flexy_dzd],
+    ["Slick Pay", data.price_slickpay_dzd],
+  ] as const) {
+    if (!Number.isFinite(value) || (value || 0) < 0)
+      return `Le prix ${label} est requis.`;
+  }
+  if (!Number.isFinite(data.stock) || data.stock < 0)
+    return "Le stock est invalide.";
+  if (
+    data.inventory_type &&
+    !["finite", "unlimited"].includes(data.inventory_type)
+  )
+    return "Le type d’inventaire est invalide.";
   return null;
 }
 
-async function persistProductRelations(productId: string, data: ProductEditorPayload) {
+function deriveProductStock(data: ProductEditorPayload) {
+  return data.stock;
+}
+
+async function persistProductRelations(
+  productId: string,
+  data: ProductEditorPayload,
+) {
   const normalized = normalizeEditorPayload(data);
 
   await repo.replaceProductSpecs(
@@ -566,7 +633,7 @@ async function persistProductRelations(productId: string, data: ProductEditorPay
       value_fr: spec.value_fr,
       value_ar: spec.value_ar,
       sort_order: spec.sort_order ?? index,
-    }))
+    })),
   );
 
   await repo.replaceProductImages(
@@ -576,17 +643,7 @@ async function persistProductRelations(productId: string, data: ProductEditorPay
       alt_fr: image.alt_fr,
       alt_ar: image.alt_ar,
       sort_order: image.sort_order ?? index,
-    }))
-  );
-
-  await repo.replaceProductVariants(
-    productId,
-    normalized.variants.map((variant) => ({
-      name: variant.name,
-      value: variant.value,
-      price_delta_dzd: variant.price_delta_dzd ?? 0,
-      stock: variant.stock ?? 0,
-    }))
+    })),
   );
 
   const seoResult = await repo.updateProductSeo(productId, normalized.seo);
@@ -605,39 +662,48 @@ export async function adminGetProducts(filters?: {
   limit?: number;
 }) {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
   try {
-    return await repo.getProducts({ ...filters, onlyActive: filters?.onlyActive ?? false });
+    return await repo.getProducts({
+      ...filters,
+      onlyActive: filters?.onlyActive ?? false,
+    });
   } catch (error: any) {
-    console.error('adminGetProducts failed:', error);
+    console.error("adminGetProducts failed:", error);
     return { error: error.message };
   }
 }
 
 export async function adminGetProductById(id: string) {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
   try {
     return await repo.getProductById(id);
   } catch (error: any) {
-    console.error('adminGetProductById failed:', error);
+    console.error("adminGetProductById failed:", error);
     return { error: error.message };
   }
 }
 
-export async function adminCheckProductSlug(slug: string, excludeProductId?: string) {
+export async function adminCheckProductSlug(
+  slug: string,
+  excludeProductId?: string,
+) {
   if (!(await isAdminAuthenticated())) {
     return { exists: false };
   }
   const normalizedSlug = slug.trim().toLowerCase();
   if (!normalizedSlug) return { exists: false };
   try {
-    const exists = await repo.productSlugExists(normalizedSlug, excludeProductId);
+    const exists = await repo.productSlugExists(
+      normalizedSlug,
+      excludeProductId,
+    );
     return { exists };
   } catch (error: any) {
-    console.error('adminCheckProductSlug failed:', error);
+    console.error("adminCheckProductSlug failed:", error);
     return { exists: false };
   }
 }
@@ -649,7 +715,7 @@ export async function adminHasProductVariantsTable() {
   try {
     return await repo.hasProductVariantsTable();
   } catch (error: any) {
-    console.error('adminHasProductVariantsTable failed:', error);
+    console.error("adminHasProductVariantsTable failed:", error);
     return false;
   }
 }
@@ -661,60 +727,60 @@ export async function adminHasProductSeoColumns() {
   try {
     return await repo.hasProductSeoColumns();
   } catch (error: any) {
-    console.error('adminHasProductSeoColumns failed:', error);
+    console.error("adminHasProductSeoColumns failed:", error);
     return false;
   }
 }
 
 export async function adminUploadProductImage(formData: FormData) {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
 
   try {
-    const fileValue = formData.get('file');
+    const fileValue = formData.get("file");
     if (!(fileValue instanceof File)) {
-      return { error: 'Fichier invalide.' };
+      return { error: "Fichier invalide." };
     }
 
-    if (!fileValue.type.startsWith('image/')) {
-      return { error: 'Le fichier doit etre une image.' };
+    if (!fileValue.type.startsWith("image/")) {
+      return { error: "Le fichier doit etre une image." };
     }
 
     const uploaded = await repo.uploadProductImage(fileValue);
     return uploaded;
   } catch (error: any) {
-    console.error('adminUploadProductImage failed:', error);
-    return { error: error?.message || 'Upload impossible.' };
+    console.error("adminUploadProductImage failed:", error);
+    return { error: error?.message || "Upload impossible." };
   }
 }
 
 export async function adminUploadDepartmentImage(formData: FormData) {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
 
   try {
-    const fileValue = formData.get('file');
+    const fileValue = formData.get("file");
     if (!(fileValue instanceof File)) {
-      return { error: 'Fichier invalide.' };
+      return { error: "Fichier invalide." };
     }
 
-    if (!fileValue.type.startsWith('image/')) {
-      return { error: 'Le fichier doit etre une image.' };
+    if (!fileValue.type.startsWith("image/")) {
+      return { error: "Le fichier doit etre une image." };
     }
 
     const uploaded = await repo.uploadProductImage(fileValue);
     return uploaded;
   } catch (error: any) {
-    console.error('adminUploadDepartmentImage failed:', error);
-    return { error: error?.message || 'Upload impossible.' };
+    console.error("adminUploadDepartmentImage failed:", error);
+    return { error: error?.message || "Upload impossible." };
   }
 }
 
 export async function adminCreateProduct(data: ProductEditorPayload) {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
 
   const validationError = validateProductRequiredFields(data);
@@ -726,18 +792,33 @@ export async function adminCreateProduct(data: ProductEditorPayload) {
     const normalized = {
       slug,
       title_fr: data.title_fr.trim(),
-      title_ar: (data.title_ar?.trim() || data.title_fr.trim()),
+      title_ar: data.title_ar?.trim() || data.title_fr.trim(),
       description_fr: data.description_fr?.trim(),
       description_ar: data.description_ar?.trim(),
       brand_id: data.brand_id?.trim(),
       department_id: data.department_id,
       category_id: data.category_id,
-      price_dzd: Number.isFinite(data.price_dzd) && data.price_dzd >= 0 ? data.price_dzd : 0,
+      price_dzd:
+        Number.isFinite(data.price_dzd) && (data.price_dzd || 0) >= 0
+          ? data.price_dzd
+          : null,
+      price_baridimob_dzd: data.price_baridimob_dzd,
+      price_flexy_dzd: data.price_flexy_dzd,
+      price_slickpay_dzd: data.price_slickpay_dzd,
       compare_at_price_dzd: data.compare_at_price_dzd,
       sku: data.sku?.trim(),
-      stock: Number.isFinite(data.stock) && data.stock >= 0 ? data.stock : 0,
+      stock:
+        Number.isFinite(deriveProductStock(data)) &&
+        deriveProductStock(data) >= 0
+          ? deriveProductStock(data)
+          : 0,
+      inventory_type: data.inventory_type ?? "finite",
+      fulfillment_type: data.fulfillment_type ?? "manual",
       is_featured: data.is_featured ?? false,
-      is_active: data.is_active ?? true,
+      is_active:
+        normalizedPriceIsMissing(data) && (data.variants || []).length > 0
+          ? false
+          : (data.is_active ?? true),
       specs: data.specs || [],
       images: data.images || [],
       variants: data.variants || [],
@@ -754,60 +835,104 @@ export async function adminCreateProduct(data: ProductEditorPayload) {
       department_id: normalized.department_id,
       category_id: normalized.category_id,
       price_dzd: normalized.price_dzd,
+      price_baridimob_dzd: normalized.price_baridimob_dzd,
+      price_flexy_dzd: normalized.price_flexy_dzd,
+      price_slickpay_dzd: normalized.price_slickpay_dzd,
       compare_at_price_dzd: normalized.compare_at_price_dzd,
       sku: normalized.sku,
       stock: normalized.stock,
+      inventory_type: normalized.inventory_type,
+      fulfillment_type: normalized.fulfillment_type,
       is_featured: normalized.is_featured,
       is_active: normalized.is_active,
     });
 
-    const relationResult = await persistProductRelations(created.id, normalized);
+    const relationResult = await persistProductRelations(
+      created.id,
+      normalized,
+    );
+    if (normalized.is_active !== (data.is_active ?? true)) {
+      await repo.updateProduct(created.id, {
+        is_active: data.is_active ?? true,
+      });
+    }
 
-    revalidatePath('/admin/products');
+    revalidatePath("/admin/products");
     revalidatePath(`/admin/products/${created.id}/edit`);
     revalidatePath(`/product/${normalized.slug}`);
-    revalidatePath('/shop');
+    revalidatePath("/shop");
 
     return {
       ...created,
       seo_supported: relationResult.seoSupported,
     };
   } catch (error: any) {
-    console.error('adminCreateProduct failed:', error);
+    console.error("adminCreateProduct failed:", error);
     return { error: error.message };
   }
 }
 
 export async function adminUpdateProduct(
   id: string,
-  data: Partial<ProductEditorPayload>
+  data: Partial<ProductEditorPayload>,
 ) {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
 
   try {
     const currentProductResult = await repo.getProductById(id);
-    if ('error' in currentProductResult) {
+    if ("error" in currentProductResult) {
       return { error: currentProductResult.error };
     }
     const currentProduct = currentProductResult as any;
     const merged: ProductEditorPayload = {
       slug: data.slug ?? currentProduct.slug,
       title_fr: data.title_fr ?? currentProduct.title_fr,
-      title_ar: data.title_ar ?? currentProduct.title_ar ?? data.title_fr ?? currentProduct.title_fr,
-      description_fr: data.description_fr ?? currentProduct.description_fr ?? '',
-      description_ar: data.description_ar ?? currentProduct.description_ar ?? '',
+      title_ar:
+        data.title_ar ??
+        currentProduct.title_ar ??
+        data.title_fr ??
+        currentProduct.title_fr,
+      description_fr:
+        data.description_fr ?? currentProduct.description_fr ?? "",
+      description_ar:
+        data.description_ar ?? currentProduct.description_ar ?? "",
       brand_id: data.brand_id ?? currentProduct.brand_id ?? undefined,
       department_id: data.department_id ?? currentProduct.department_id,
       category_id: data.category_id ?? currentProduct.category_id,
-      price_dzd: data.price_dzd ?? Number(currentProduct.price_dzd ?? 0),
+      price_dzd:
+        data.price_dzd !== undefined
+          ? data.price_dzd
+          : (currentProduct.price_dzd ?? null),
+      price_baridimob_dzd:
+        data.price_baridimob_dzd !== undefined
+          ? data.price_baridimob_dzd
+          : (currentProduct.price_baridimob_dzd ??
+            currentProduct.price_dzd ??
+            null),
+      price_flexy_dzd:
+        data.price_flexy_dzd !== undefined
+          ? data.price_flexy_dzd
+          : (currentProduct.price_flexy_dzd ??
+            currentProduct.price_dzd ??
+            null),
+      price_slickpay_dzd:
+        data.price_slickpay_dzd !== undefined
+          ? data.price_slickpay_dzd
+          : (currentProduct.price_slickpay_dzd ??
+            currentProduct.price_dzd ??
+            null),
       compare_at_price_dzd:
         data.compare_at_price_dzd !== undefined
           ? data.compare_at_price_dzd
-          : currentProduct.compare_at_price_dzd ?? null,
+          : (currentProduct.compare_at_price_dzd ?? null),
       sku: data.sku ?? currentProduct.sku ?? undefined,
       stock: data.stock ?? Number(currentProduct.stock ?? 0),
+      inventory_type:
+        data.inventory_type ?? currentProduct.inventory_type ?? "finite",
+      fulfillment_type:
+        data.fulfillment_type ?? currentProduct.fulfillment_type ?? "manual",
       is_featured: data.is_featured ?? currentProduct.is_featured,
       is_active: data.is_active ?? currentProduct.is_active,
       specs: data.specs ?? currentProduct.product_specs ?? [],
@@ -836,12 +961,30 @@ export async function adminUpdateProduct(
       brand_id: merged.brand_id,
       department_id: merged.department_id,
       category_id: merged.category_id,
-      price_dzd: Number.isFinite(merged.price_dzd) && merged.price_dzd >= 0 ? merged.price_dzd : 0,
+      price_dzd:
+        Number.isFinite(merged.price_dzd) && (merged.price_dzd || 0) >= 0
+          ? merged.price_dzd
+          : null,
+      price_baridimob_dzd: merged.price_baridimob_dzd,
+      price_flexy_dzd: merged.price_flexy_dzd,
+      price_slickpay_dzd: merged.price_slickpay_dzd,
       compare_at_price_dzd: merged.compare_at_price_dzd,
       sku: merged.sku,
-      stock: Number.isFinite(merged.stock) && merged.stock >= 0 ? merged.stock : 0,
+      stock:
+        Number.isFinite(deriveProductStock(merged)) &&
+        deriveProductStock(merged) >= 0
+          ? deriveProductStock(merged)
+          : 0,
+      inventory_type: merged.inventory_type ?? "finite",
+      fulfillment_type: merged.fulfillment_type ?? "manual",
       is_featured: merged.is_featured,
-      is_active: merged.is_active,
+      is_active:
+        normalizedPriceIsMissing(merged) &&
+        (merged.variants || []).some(
+          (variant) => variant.name?.trim() && variant.value?.trim(),
+        )
+          ? false
+          : merged.is_active,
       specs: merged.specs,
       images: merged.images,
       variants: merged.variants,
@@ -858,40 +1001,48 @@ export async function adminUpdateProduct(
       department_id: normalized.department_id,
       category_id: normalized.category_id,
       price_dzd: normalized.price_dzd,
+      price_baridimob_dzd: normalized.price_baridimob_dzd,
+      price_flexy_dzd: normalized.price_flexy_dzd,
+      price_slickpay_dzd: normalized.price_slickpay_dzd,
       compare_at_price_dzd: normalized.compare_at_price_dzd,
       sku: normalized.sku,
       stock: normalized.stock,
+      inventory_type: normalized.inventory_type,
+      fulfillment_type: normalized.fulfillment_type,
       is_featured: normalized.is_featured,
       is_active: normalized.is_active,
     });
 
     const relationResult = await persistProductRelations(id, normalized);
+    if (normalized.is_active !== (merged.is_active ?? true)) {
+      await repo.updateProduct(id, { is_active: merged.is_active ?? true });
+    }
 
-    revalidatePath('/admin/products');
+    revalidatePath("/admin/products");
     revalidatePath(`/admin/products/${id}/edit`);
     revalidatePath(`/product/${normalized.slug}`);
-    revalidatePath('/shop');
+    revalidatePath("/shop");
 
     return {
       ...updated,
       seo_supported: relationResult.seoSupported,
     };
   } catch (error: any) {
-    console.error('adminUpdateProduct failed:', error);
+    console.error("adminUpdateProduct failed:", error);
     return { error: error.message };
   }
 }
 
 export async function adminDeleteProduct(id: string) {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
   try {
     await repo.deleteProduct(id);
-    revalidatePath('/admin/products');
+    revalidatePath("/admin/products");
     return { success: true };
   } catch (error: any) {
-    console.error('adminDeleteProduct failed:', error);
+    console.error("adminDeleteProduct failed:", error);
     return { error: error.message };
   }
 }
@@ -906,7 +1057,7 @@ export async function adminGetOrders(filters?: {
   limit?: number;
 }) {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
   try {
     return await repo.adminGetOrders(filters);
@@ -917,7 +1068,7 @@ export async function adminGetOrders(filters?: {
 
 export async function adminGetOrderById(id: string) {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
   try {
     return await repo.adminGetOrderById(id);
@@ -927,28 +1078,94 @@ export async function adminGetOrderById(id: string) {
 }
 
 export async function adminVerifyPayment(paymentId: string, note?: string) {
-  if (!(await isAdminAuthenticated())) throw new Error('Unauthorized');
-  try { return { success: true, payment: await verifyManualPayment(paymentId, note) }; } catch (error: any) {
-    console.error('adminVerifyPayment failed:', error);
-    return { success: false, error: String(error?.message).includes('STATE_CONFLICT') ? 'Ce paiement a déjà été traité ou n’est plus disponible.' : 'Impossible de traiter ce paiement.' };
+  if (!(await isAdminAuthenticated())) throw new Error("Unauthorized");
+  try {
+    const result = await verifyManualPayment(paymentId, note);
+    let emailResult: unknown = { processed: false };
+    try {
+      const { processOneDigitalEmailJob } =
+        await import("@/lib/digital-email-worker");
+      for (let attempt = 0; attempt < 10; attempt += 1) {
+        const next = await processOneDigitalEmailJob(
+          `admin-payment:${paymentId}:${attempt}`,
+        );
+        emailResult = next;
+        if (next.sent || !next.processed) break;
+      }
+    } catch (emailError) {
+      console.error("Digital delivery email worker failed:", emailError);
+      emailResult = { processed: false, error: "EMAIL_WORKER_FAILED" };
+    }
+    return { success: true, ...result, email: emailResult };
+  } catch (error: any) {
+    console.error("adminVerifyPayment failed:", error);
+    return {
+      success: false,
+      error: String(error?.message).includes("STATE_CONFLICT")
+        ? "Ce paiement a déjà été traité ou n’est plus disponible."
+        : process.env.NODE_ENV !== "production" && error?.message
+          ? String(error.message)
+          : "Impossible de traiter ce paiement.",
+    };
+  }
+}
+
+export async function adminRetryDigitalDeliveryEmail(orderId: string) {
+  if (!(await isAdminAuthenticated())) throw new Error("Unauthorized");
+  try {
+    await repo.enqueueDirectProductDeliveryEmail(orderId);
+    const { processOneDigitalEmailJob } =
+      await import("@/lib/digital-email-worker");
+    let last: any = { processed: false };
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      last = await processOneDigitalEmailJob(
+        `admin-retry:${orderId}:${attempt}`,
+      );
+      if (last.sent || !last.processed) break;
+    }
+    return { success: true, email: last };
+  } catch (error: any) {
+    console.error("adminRetryDigitalDeliveryEmail failed:", error);
+    return {
+      success: false,
+      error: String(error?.message || "EMAIL_RETRY_FAILED"),
+    };
   }
 }
 
 export async function adminRejectPayment(paymentId: string, reason: string) {
-  if (!(await isAdminAuthenticated())) throw new Error('Unauthorized');
-  try { return { success: true, payment: await rejectManualPayment(paymentId, reason) }; } catch (error: any) {
-    console.error('adminRejectPayment failed:', error);
-    return { success: false, error: String(error?.message).includes('STATE_CONFLICT') ? 'Ce paiement a déjà été traité ou n’est plus disponible.' : String(error?.message).includes('raison') ? 'Indiquez la raison du rejet.' : 'Impossible de traiter ce paiement.' };
+  if (!(await isAdminAuthenticated())) throw new Error("Unauthorized");
+  try {
+    return {
+      success: true,
+      payment: await rejectManualPayment(paymentId, reason),
+    };
+  } catch (error: any) {
+    console.error("adminRejectPayment failed:", error);
+    return {
+      success: false,
+      error: String(error?.message).includes("STATE_CONFLICT")
+        ? "Ce paiement a déjà été traité ou n’est plus disponible."
+        : String(error?.message).includes("raison")
+          ? "Indiquez la raison du rejet."
+          : "Impossible de traiter ce paiement.",
+    };
   }
 }
 
-export async function adminGetPaymentProofUrl(paymentId: string, orderId: string) {
-  if (!(await isAdminAuthenticated())) throw new Error('Unauthorized');
+export async function adminGetPaymentProofUrl(
+  paymentId: string,
+  orderId: string,
+) {
+  if (!(await isAdminAuthenticated())) throw new Error("Unauthorized");
   try {
-    return { success: true, url: await repo.getAdminPaymentProofSignedUrl(paymentId, orderId) };
+    return {
+      success: true,
+      url: await repo.getAdminPaymentProofSignedUrl(paymentId, orderId),
+    };
   } catch (error) {
-    console.error('adminGetPaymentProofUrl failed:', error);
-    return { success: false, error: 'Le justificatif n’est plus disponible.' };
+    console.error("adminGetPaymentProofUrl failed:", error);
+    return { success: false, error: "Le justificatif n’est plus disponible." };
   }
 }
 
@@ -957,10 +1174,10 @@ export async function adminUpdateOrderStatus(
   data: {
     status?: string;
     admin_note?: string;
-  }
+  },
 ) {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
   try {
     return await repo.updateOrderStatus(id, data);
@@ -970,52 +1187,116 @@ export async function adminUpdateOrderStatus(
 }
 
 export async function adminDeliverOrder(orderId: string) {
-  if (!(await isAdminAuthenticated())) throw new Error('Unauthorized');
+  if (!(await isAdminAuthenticated())) throw new Error("Unauthorized");
   try {
-    const result = await repo.adminDeliverOrder(orderId, 'admin');
+    if (await repo.orderHasAutomaticDigitalItems(orderId)) {
+      return {
+        success: false,
+        error:
+          "Les produits Credentials/Code sont livrés automatiquement après vérification du paiement.",
+      };
+    }
+    const result = await repo.adminDeliverOrder(orderId, "admin");
     revalidatePath(`/admin/orders/${orderId}`);
     revalidatePath(`/account/orders/${orderId}`);
     return { success: true, fulfillment: result };
   } catch (error: any) {
-    console.error('adminDeliverOrder failed:', error);
-    const message = String(error?.message || '');
-    return { success: false, error: message.includes('DIGITAL_FULFILLMENT_NOT_ELIGIBLE') ? 'Cette commande n’est pas éligible à la livraison digitale.' : message.includes('FULFILLMENT_STATE_CONFLICT') ? 'Cette commande a déjà été livrée ou ne peut plus être livrée.' : 'Impossible de livrer cette commande.' };
+    console.error("adminDeliverOrder failed:", error);
+    const message = String(error?.message || "");
+    return {
+      success: false,
+      error: message.includes("DIGITAL_FULFILLMENT_NOT_ELIGIBLE")
+        ? "Cette commande n’est pas éligible à la livraison digitale."
+        : message.includes("FULFILLMENT_STATE_CONFLICT")
+          ? "Cette commande a déjà été livrée ou ne peut plus être livrée."
+          : "Impossible de livrer cette commande.",
+    };
   }
 }
 
 export async function adminGetFulfillmentItems(fulfillmentId: string) {
-  if (!(await isAdminAuthenticated())) throw new Error('Unauthorized');
-  try { return { success: true, items: await repo.adminGetFulfillmentItems(fulfillmentId) }; }
-  catch (error) { console.error('adminGetFulfillmentItems failed:', error); return { success: false, error: 'Contenu indisponible.', items: [] }; }
+  if (!(await isAdminAuthenticated())) throw new Error("Unauthorized");
+  try {
+    return {
+      success: true,
+      items: await repo.adminGetFulfillmentItems(fulfillmentId),
+    };
+  } catch (error) {
+    console.error("adminGetFulfillmentItems failed:", error);
+    return { success: false, error: "Contenu indisponible.", items: [] };
+  }
 }
 
 export async function adminPrepareFulfillment(orderId: string) {
-  if (!(await isAdminAuthenticated())) throw new Error('Unauthorized');
-  try { return { success: true, fulfillment: await repo.adminPrepareFulfillment(orderId) }; }
-  catch (error) { console.error('adminPrepareFulfillment failed:', error); return { success: false, error: 'La livraison digitale n’est pas disponible pour cette commande.' }; }
+  if (!(await isAdminAuthenticated())) throw new Error("Unauthorized");
+  try {
+    return {
+      success: true,
+      fulfillment: await repo.adminPrepareFulfillment(orderId),
+    };
+  } catch (error) {
+    console.error("adminPrepareFulfillment failed:", error);
+    return {
+      success: false,
+      error: "La livraison digitale n’est pas disponible pour cette commande.",
+    };
+  }
 }
 
-export async function adminAddFulfillmentItem(input: { fulfillmentId: string; type: 'file' | 'link' | 'code' | 'manual'; title: string; description?: string; url?: string; code?: string; message?: string; file?: File }) {
-  if (!(await isAdminAuthenticated())) throw new Error('Unauthorized');
-  try { return { success: true, item: await repo.adminAddFulfillmentItem(input) }; }
-  catch (error) { console.error('adminAddFulfillmentItem failed:', error); return { success: false, error: 'Impossible d’ajouter ce contenu.' }; }
+export async function adminAddFulfillmentItem(input: {
+  fulfillmentId: string;
+  type: "file" | "link" | "code" | "manual";
+  title: string;
+  description?: string;
+  url?: string;
+  code?: string;
+  message?: string;
+  file?: File;
+}) {
+  if (!(await isAdminAuthenticated())) throw new Error("Unauthorized");
+  try {
+    return { success: true, item: await repo.adminAddFulfillmentItem(input) };
+  } catch (error) {
+    console.error("adminAddFulfillmentItem failed:", error);
+    return { success: false, error: "Impossible d’ajouter ce contenu." };
+  }
 }
 
-export async function adminUpdateFulfillmentItem(itemId: string, input: { title: string; description?: string; url?: string; code?: string; message?: string }) {
-  if (!(await isAdminAuthenticated())) throw new Error('Unauthorized');
-  try { return { success: true, item: await repo.adminUpdateFulfillmentItem(itemId, input) }; }
-  catch (error) { console.error('adminUpdateFulfillmentItem failed:', error); return { success: false, error: 'Impossible de modifier ce contenu.' }; }
+export async function adminUpdateFulfillmentItem(
+  itemId: string,
+  input: {
+    title: string;
+    description?: string;
+    url?: string;
+    code?: string;
+    message?: string;
+  },
+) {
+  if (!(await isAdminAuthenticated())) throw new Error("Unauthorized");
+  try {
+    return {
+      success: true,
+      item: await repo.adminUpdateFulfillmentItem(itemId, input),
+    };
+  } catch (error) {
+    console.error("adminUpdateFulfillmentItem failed:", error);
+    return { success: false, error: "Impossible de modifier ce contenu." };
+  }
 }
 
 export async function adminDeleteFulfillmentItem(itemId: string) {
-  if (!(await isAdminAuthenticated())) throw new Error('Unauthorized');
-  try { return await repo.adminDeleteFulfillmentItem(itemId); }
-  catch (error) { console.error('adminDeleteFulfillmentItem failed:', error); return { success: false, error: 'Impossible de supprimer ce contenu.' }; }
+  if (!(await isAdminAuthenticated())) throw new Error("Unauthorized");
+  try {
+    return await repo.adminDeleteFulfillmentItem(itemId);
+  } catch (error) {
+    console.error("adminDeleteFulfillmentItem failed:", error);
+    return { success: false, error: "Impossible de supprimer ce contenu." };
+  }
 }
 
 export async function adminGetOrderItemsAnalytics(limit?: number) {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
   try {
     return await repo.adminGetOrderItemsAnalytics(limit);
@@ -1034,7 +1315,7 @@ export async function adminGetAnalyticsData(filters?: {
   departmentId?: string;
 }) {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
   try {
     return await repo.adminGetAnalyticsData(filters);
@@ -1049,7 +1330,7 @@ export async function adminGetAnalyticsData(filters?: {
 
 export async function adminGetCustomers() {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
   try {
     return await repo.adminGetCustomers();
@@ -1064,7 +1345,7 @@ export async function adminGetCustomers() {
 
 export async function adminGetWilayas() {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
   try {
     return await repo.getWilayas();
@@ -1075,7 +1356,7 @@ export async function adminGetWilayas() {
 
 export async function adminGetShippingRates() {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
   try {
     return await repo.getShippingRates();
@@ -1086,15 +1367,15 @@ export async function adminGetShippingRates() {
 
 export async function adminUpdateShippingRate(
   wilayaCode: string,
-  method: 'home' | 'stopdesk',
+  method: "home" | "stopdesk",
   data: {
     price_dzd?: number;
     eta_min_days?: number;
     eta_max_days?: number;
-  }
+  },
 ) {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
   try {
     return await repo.updateShippingRate(wilayaCode, method, data);
@@ -1105,7 +1386,7 @@ export async function adminUpdateShippingRate(
 
 export async function adminGetShippingRules() {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
   try {
     return await repo.getShippingRules();
@@ -1119,7 +1400,7 @@ export async function adminUpdateShippingRules(data: {
   default_fee_dzd?: number;
 }) {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
   try {
     return await repo.updateShippingRules(data);
@@ -1134,7 +1415,7 @@ export async function adminUpdateShippingRules(data: {
 
 export async function adminGetHomePageBanners() {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
   try {
     return await repo.getHomePageBanners();
@@ -1154,7 +1435,7 @@ export async function adminCreateHomePageBanner(data: {
   is_active?: boolean;
 }) {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
   try {
     return await repo.createHomepageBanner(data);
@@ -1174,10 +1455,10 @@ export async function adminUpdateHomePageBanner(
     link_url?: string;
     sort_order?: number;
     is_active?: boolean;
-  }
+  },
 ) {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
   try {
     return await repo.updateHomepageBanner(id, data);
@@ -1188,7 +1469,7 @@ export async function adminUpdateHomePageBanner(
 
 export async function adminDeleteHomePageBanner(id: string) {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
   try {
     await repo.deleteHomepageBanner(id);
@@ -1200,7 +1481,7 @@ export async function adminDeleteHomePageBanner(id: string) {
 
 export async function adminGetMarqueeBrands() {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
   try {
     return await repo.getMarqueeBrands();
@@ -1216,7 +1497,7 @@ export async function adminCreateMarqueeBrand(data: {
   is_active?: boolean;
 }) {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
   try {
     return await repo.createMarqueeBrand(data);
@@ -1232,10 +1513,10 @@ export async function adminUpdateMarqueeBrand(
     logo_url?: string;
     sort_order?: number;
     is_active?: boolean;
-  }
+  },
 ) {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
   try {
     return await repo.updateMarqueeBrand(id, data);
@@ -1246,12 +1527,98 @@ export async function adminUpdateMarqueeBrand(
 
 export async function adminDeleteMarqueeBrand(id: string) {
   if (!(await isAdminAuthenticated())) {
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
   try {
     await repo.deleteMarqueeBrand(id);
     return { success: true };
   } catch (error: any) {
     return { error: error.message };
+  }
+}
+
+// ============================================================================
+// DIGITAL INVENTORY OPERATIONS
+// ============================================================================
+
+export async function adminGetDigitalInventory(productId: string) {
+  if (!(await isAdminAuthenticated())) throw new Error("Unauthorized");
+  try {
+    return await repo.adminGetDigitalInventory(productId);
+  } catch (error) {
+    console.error("adminGetDigitalInventory failed:", error);
+    return {
+      error: "Inventaire numérique indisponible.",
+      units: [],
+      allocations: [],
+      counts: {},
+    };
+  }
+}
+
+export async function adminCreateDigitalInventoryUnit(input: {
+  productId: string;
+  variantId?: string | null;
+  unitType: "credential" | "code";
+  secret: string;
+  idempotencyKey: string;
+}) {
+  if (!(await isAdminAuthenticated())) throw new Error("Unauthorized");
+  if (
+    !input.productId ||
+    !input.secret ||
+    !input.idempotencyKey ||
+    !["credential", "code"].includes(input.unitType)
+  ) {
+    return { error: "Les informations de l’unité sont invalides." };
+  }
+  try {
+    const result = await repo.adminCreateDigitalInventoryUnit(input);
+    revalidatePath(`/admin/products/${input.productId}/inventory`);
+    return { success: true, unit: result };
+  } catch (error) {
+    const technicalError =
+      error instanceof Error ? error.message : "Unknown server error";
+    console.error("adminCreateDigitalInventoryUnit failed:", technicalError);
+    return {
+      error:
+        "Impossible d’ajouter cette unité. Vérifiez les données ou réessayez.",
+    };
+  }
+}
+
+export async function adminSetDigitalInventoryUnitStatus(
+  unitId: string,
+  status: "disabled" | "revoked",
+) {
+  if (!(await isAdminAuthenticated())) throw new Error("Unauthorized");
+  try {
+    const result = await repo.adminSetDigitalInventoryUnitStatus(
+      unitId,
+      status,
+    );
+    revalidatePath("/admin/products");
+    return { success: true, unit: result };
+  } catch (error) {
+    console.error("adminSetDigitalInventoryUnitStatus failed:", error);
+    return { error: "Changement de statut impossible." };
+  }
+}
+
+export async function adminRotateDigitalInventoryUnitSecret(input: {
+  unitId: string;
+  secret: string;
+  idempotencyKey: string;
+}) {
+  if (!(await isAdminAuthenticated())) throw new Error("Unauthorized");
+  if (!input.unitId || !input.secret || !input.idempotencyKey)
+    return { error: "Les informations de rotation sont invalides." };
+  try {
+    const unit = await repo.adminRotateDigitalInventoryUnitSecret(input);
+    revalidatePath("/admin/products");
+    return { success: true, unit };
+  } catch (error) {
+    console.error("adminRotateDigitalInventoryUnitSecret failed:", error);
+    return { error: "Rotation du secret impossible." };
   }
 }

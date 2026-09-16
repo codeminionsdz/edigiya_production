@@ -1,30 +1,46 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import Link from 'next/link';
+import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import {
-  Plus, Search, Filter, MoreHorizontal, Edit, Trash2,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
+  Plus,
+  Search,
+  Filter,
+  MoreHorizontal,
+  Edit,
+  Trash2,
+  KeyRound,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Card, CardContent } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { adminGetProducts, adminDeleteProduct, adminGetDepartments } from '@/app/admin/actions';
+} from "@/components/ui/dropdown-menu";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  adminGetProducts,
+  adminDeleteProduct,
+  adminGetDepartments,
+} from "@/app/admin/actions";
 
 const PAGE_SIZE = 12;
 
 function formatPrice(price: number) {
-  return new Intl.NumberFormat('fr-DZ', {
-    style: 'currency',
-    currency: 'DZD',
+  return new Intl.NumberFormat("fr-DZ", {
+    style: "currency",
+    currency: "DZD",
     minimumFractionDigits: 0,
   }).format(price);
 }
@@ -33,9 +49,9 @@ export default function AdminProductsPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [deptFilter, setDeptFilter] = useState('all');
-  const [stockFilter, setStockFilter] = useState('all');
+  const [search, setSearch] = useState("");
+  const [deptFilter, setDeptFilter] = useState("all");
+  const [stockFilter, setStockFilter] = useState("all");
   const [page, setPage] = useState(1);
 
   const loadData = useCallback(async () => {
@@ -46,8 +62,12 @@ export default function AdminProductsPage() {
         adminGetDepartments(),
       ]);
 
-      if (productsData && typeof productsData === 'object' && 'error' in productsData) {
-        console.error('adminGetProducts returned error:', productsData.error);
+      if (
+        productsData &&
+        typeof productsData === "object" &&
+        "error" in productsData
+      ) {
+        console.error("adminGetProducts returned error:", productsData.error);
         setProducts([]);
       } else {
         setProducts(productsData?.products || []);
@@ -55,7 +75,7 @@ export default function AdminProductsPage() {
 
       setDepartments(Array.isArray(deptData) ? deptData : []);
     } catch (error) {
-      console.error('Failed to load products:', error);
+      console.error("Failed to load products:", error);
       setProducts([]);
     } finally {
       setIsLoading(false);
@@ -68,43 +88,46 @@ export default function AdminProductsPage() {
 
   const filtered = products.filter((p) => {
     let match = true;
-    
+
     if (search) {
       const q = search.toLowerCase();
-      match = match && (
-        p.title_fr?.toLowerCase().includes(q) ||
-        p.title_ar?.toLowerCase().includes(q) ||
-        p.sku?.toLowerCase().includes(q)
-      );
+      match =
+        match &&
+        (p.title_fr?.toLowerCase().includes(q) ||
+          p.title_ar?.toLowerCase().includes(q) ||
+          p.sku?.toLowerCase().includes(q));
     }
-    
-    if (deptFilter !== 'all') {
+
+    if (deptFilter !== "all") {
       match = match && p.department_id === deptFilter;
     }
-    
-    if (stockFilter === 'low') {
+
+    if (stockFilter === "low") {
       match = match && p.stock <= 10;
-    } else if (stockFilter === 'out') {
+    } else if (stockFilter === "out") {
       match = match && p.stock === 0;
     }
-    
+
     return match;
   });
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-  const paginatedProducts = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const paginatedProducts = filtered.slice(
+    (page - 1) * PAGE_SIZE,
+    page * PAGE_SIZE,
+  );
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer ce produit?')) return;
+    if (!confirm("Êtes-vous sûr de vouloir supprimer ce produit?")) return;
     try {
       const result = await adminDeleteProduct(id);
-      if (result && typeof result === 'object' && 'error' in result) {
+      if (result && typeof result === "object" && "error" in result) {
         alert(String(result.error));
         return;
       }
       setProducts(products.filter((p) => p.id !== id));
     } catch (error) {
-      alert('Erreur lors de la suppression du produit');
+      alert("Erreur lors de la suppression du produit");
     }
   };
 
@@ -164,10 +187,13 @@ export default function AdminProductsPage() {
 
             <div className="space-y-2">
               <label className="text-sm font-medium">Département</label>
-              <Select value={deptFilter} onValueChange={(v) => {
-                setDeptFilter(v);
-                setPage(1);
-              }}>
+              <Select
+                value={deptFilter}
+                onValueChange={(v) => {
+                  setDeptFilter(v);
+                  setPage(1);
+                }}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -184,10 +210,13 @@ export default function AdminProductsPage() {
 
             <div className="space-y-2">
               <label className="text-sm font-medium">Stock</label>
-              <Select value={stockFilter} onValueChange={(v) => {
-                setStockFilter(v);
-                setPage(1);
-              }}>
+              <Select
+                value={stockFilter}
+                onValueChange={(v) => {
+                  setStockFilter(v);
+                  setPage(1);
+                }}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -243,25 +272,48 @@ export default function AdminProductsPage() {
                 </thead>
                 <tbody>
                   {paginatedProducts.map((product) => (
-                    <tr key={product.id} className="border-b border-border hover:bg-muted/50">
+                    <tr
+                      key={product.id}
+                      className="border-b border-border hover:bg-muted/50"
+                    >
                       <td className="px-4 py-3">
                         <div className="flex flex-col gap-1">
-                          <p className="font-medium text-foreground">{product.title_fr}</p>
-                          <p className="text-xs text-muted-foreground">{product.title_ar}</p>
+                          <p className="font-medium text-foreground">
+                            {product.title_fr}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {product.title_ar}
+                          </p>
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <code className="text-xs font-mono text-muted-foreground">{product.sku}</code>
+                        <code className="text-xs font-mono text-muted-foreground">
+                          {product.sku}
+                        </code>
                       </td>
-                      <td className="px-4 py-3 font-semibold">{formatPrice(product.price_dzd)}</td>
+                      <td className="px-4 py-3 font-semibold">
+                        {product.price_dzd == null
+                          ? "Prix via variantes"
+                          : formatPrice(product.price_dzd)}
+                      </td>
                       <td className="px-4 py-3">
-                        <Badge variant={product.stock > 10 ? 'default' : product.stock > 0 ? 'secondary' : 'destructive'}>
+                        <Badge
+                          variant={
+                            product.stock > 10
+                              ? "default"
+                              : product.stock > 0
+                                ? "secondary"
+                                : "destructive"
+                          }
+                        >
                           {product.stock}
                         </Badge>
                       </td>
                       <td className="px-4 py-3">
-                        <Badge variant={product.is_active ? 'default' : 'secondary'}>
-                          {product.is_active ? 'Actif' : 'Inactif'}
+                        <Badge
+                          variant={product.is_active ? "default" : "secondary"}
+                        >
+                          {product.is_active ? "Actif" : "Inactif"}
                         </Badge>
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -278,7 +330,17 @@ export default function AdminProductsPage() {
                                 Modifier
                               </Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDelete(product.id)}>
+                            <DropdownMenuItem asChild>
+                              <Link
+                                href={`/admin/products/${product.id}/inventory`}
+                              >
+                                <KeyRound className="mr-2 h-4 w-4" />
+                                Inventaire numérique
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDelete(product.id)}
+                            >
                               <Trash2 className="mr-2 h-4 w-4" />
                               Supprimer
                             </DropdownMenuItem>

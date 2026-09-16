@@ -53,8 +53,15 @@ export async function submitPaymentProof(input: { paymentId: string; orderId: st
 export async function verifyManualPayment(paymentId: string, note?: string) {
   const payment: any = await repo.getPaymentWithOrder(paymentId)
   if (!payment || !isManualPaymentMethod(payment.method as string)) throw new Error('Paiement manuel introuvable.')
-  if (!['pending', 'verification_required'].includes(payment.status)) throw new Error('Transition de paiement invalide.')
-  return repo.transitionAdminPaymentAtomic(paymentId, 'paid', note?.trim() || null)
+  if (!['pending', 'verification_required', 'paid'].includes(payment.status)) throw new Error('Transition de paiement invalide.')
+  const orderId = payment.orders?.id || payment.order_id
+  if (!orderId) throw new Error('Paiement sans commande.')
+  return repo.confirmPaymentAndDeliverDigitalOrder(
+    orderId,
+    paymentId,
+    `admin:payment-verification:${paymentId}`,
+    note?.trim() || null,
+  )
 }
 
 export async function rejectManualPayment(paymentId: string, reason: string) {

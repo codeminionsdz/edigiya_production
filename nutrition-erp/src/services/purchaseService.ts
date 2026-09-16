@@ -3,7 +3,7 @@
  * Handles supplier purchases, stock receipt, and cash outflows
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
 import {
   Purchase,
   PurchaseItem,
@@ -11,19 +11,19 @@ import {
   CreatePurchaseItemInput,
   StockBatch,
   ApiResponse,
-} from '../types';
-import mockSupabase from '../lib/mockDatabase';
+} from "../types";
+import mockSupabase from "../lib/mockDatabase";
 
 // Use mock database if credentials are placeholders (development mode)
-const isDevMode = 
-  process.env.VITE_SUPABASE_URL?.includes('your-project') ||
-  process.env.VITE_SUPABASE_ANON_KEY?.includes('your-anon-key');
+const isDevMode =
+  process.env.VITE_SUPABASE_URL?.includes("your-project") ||
+  process.env.VITE_SUPABASE_ANON_KEY?.includes("your-anon-key");
 
-const supabase = isDevMode 
+const supabase = isDevMode
   ? (mockSupabase as any)
   : createClient(
-      process.env.VITE_SUPABASE_URL || '',
-      process.env.VITE_SUPABASE_ANON_KEY || ''
+      process.env.VITE_SUPABASE_URL || "",
+      process.env.VITE_SUPABASE_ANON_KEY || "",
     );
 
 /**
@@ -31,7 +31,7 @@ const supabase = isDevMode
  */
 export async function createPurchase(
   input: CreatePurchaseInput,
-  items: CreatePurchaseItemInput[]
+  items: CreatePurchaseItemInput[],
 ): Promise<ApiResponse<Purchase>> {
   try {
     // Generate unique purchase number
@@ -39,11 +39,14 @@ export async function createPurchase(
 
     // Insert purchase
     const { data: purchase, error: purchaseError } = await supabase
-      .from('purchases')
+      .from("purchases")
       .insert({
         ...input,
         purchase_number: purchaseNumber,
-        total_amount: items.reduce((sum, item) => sum + item.total_cost, 0),
+        total_amount: items.reduce(
+          (sum, item) => sum + item.quantity_ordered * item.unit_cost,
+          0,
+        ),
       })
       .select()
       .single();
@@ -63,7 +66,7 @@ export async function createPurchase(
     }));
 
     const { error: itemsError } = await supabase
-      .from('purchase_items')
+      .from("purchase_items")
       .insert(itemsWithPurchaseId);
 
     if (itemsError) {
@@ -80,7 +83,7 @@ export async function createPurchase(
   } catch (error) {
     return {
       success: false,
-      error: `Error creating purchase: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      error: `Error creating purchase: ${error instanceof Error ? error.message : "Unknown error"}`,
     };
   }
 }
@@ -99,7 +102,7 @@ export async function receiveStock(
     unit_cost: number;
     received_date: string;
     expiry_date?: string;
-  }>
+  }>,
 ): Promise<ApiResponse<{ stockBatches: StockBatch[] }>> {
   try {
     const createdBatches: StockBatch[] = [];
@@ -107,7 +110,7 @@ export async function receiveStock(
     // Create stock batches for each item
     for (const item of items) {
       const { data: batch, error: batchError } = await supabase
-        .from('stock_batches')
+        .from("stock_batches")
         .insert({
           product_id: item.product_id,
           batch_number: item.batch_number,
@@ -132,13 +135,13 @@ export async function receiveStock(
 
       // Record stock movement (in)
       const { error: movementError } = await supabase
-        .from('stock_movements')
+        .from("stock_movements")
         .insert({
           product_id: item.product_id,
           batch_id: batch.id,
-          movement_type: 'in',
+          movement_type: "in",
           quantity: item.quantity_received,
-          reference_type: 'purchase',
+          reference_type: "purchase",
           reference_id: purchaseId,
           notes: `Stock received from purchase - Batch: ${item.batch_number}`,
           created_at: new Date().toISOString(),
@@ -153,9 +156,9 @@ export async function receiveStock(
 
       // Update purchase item with received quantity
       const { error: updateError } = await supabase
-        .from('purchase_items')
+        .from("purchase_items")
         .update({ quantity_received: item.quantity_received })
-        .eq('id', item.purchase_item_id);
+        .eq("id", item.purchase_item_id);
 
       if (updateError) {
         return {
@@ -167,23 +170,33 @@ export async function receiveStock(
 
     // Check if purchase is fully received
     const { data: purchaseItems } = await supabase
-      .from('purchase_items')
-      .select('quantity_ordered, quantity_received')
-      .eq('purchase_id', purchaseId);
+      .from("purchase_items")
+      .select("quantity_ordered, quantity_received")
+      .eq("purchase_id", purchaseId);
 
     const allReceived =
-      purchaseItems?.every((pi) => pi.quantity_ordered === pi.quantity_received) || false;
-    const partialReceived = purchaseItems?.some((pi) => pi.quantity_received > 0) || false;
+      purchaseItems?.every(
+        (pi: { quantity_ordered: number; quantity_received: number }) =>
+          pi.quantity_ordered === pi.quantity_received,
+      ) || false;
+    const partialReceived =
+      purchaseItems?.some(
+        (pi: { quantity_received: number }) => pi.quantity_received > 0,
+      ) || false;
 
     // Update purchase status
-    const newStatus = allReceived ? 'received' : partialReceived ? 'partial' : 'pending';
+    const newStatus = allReceived
+      ? "received"
+      : partialReceived
+        ? "partial"
+        : "pending";
     const { error: statusError } = await supabase
-      .from('purchases')
+      .from("purchases")
       .update({ status: newStatus })
-      .eq('id', purchaseId);
+      .eq("id", purchaseId);
 
     if (statusError) {
-      console.error('Failed to update purchase status:', statusError.message);
+      console.error("Failed to update purchase status:", statusError.message);
     }
 
     return {
@@ -193,7 +206,7 @@ export async function receiveStock(
   } catch (error) {
     return {
       success: false,
-      error: `Error receiving stock: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      error: `Error receiving stock: ${error instanceof Error ? error.message : "Unknown error"}`,
     };
   }
 }
@@ -204,14 +217,14 @@ export async function receiveStock(
 export async function processPurchasePayment(
   purchaseId: number,
   paymentAmount: number,
-  paymentMethod: string = 'bank_transfer'
+  paymentMethod: string = "bank_transfer",
 ): Promise<ApiResponse<{ success: boolean; message: string }>> {
   try {
     // Get purchase details
     const { data: purchase, error: purchaseError } = await supabase
-      .from('purchases')
-      .select('*, suppliers(*)')
-      .eq('id', purchaseId)
+      .from("purchases")
+      .select("*, suppliers(*)")
+      .eq("id", purchaseId)
       .single();
 
     if (purchaseError || !purchase) {
@@ -234,19 +247,17 @@ export async function processPurchasePayment(
     // Record cash transaction
     const newBalance = currentBalance - paymentAmount;
 
-    const { error: cashError } = await supabase
-      .from('cash_ledger')
-      .insert({
-        transaction_date: new Date().toISOString().split('T')[0],
-        transaction_type: 'payment_made',
-        description: `Payment to ${purchase.suppliers?.name || 'Supplier'} for Purchase #${purchase.purchase_number} (${paymentMethod})`,
-        debit: 0,
-        credit: paymentAmount, // Cash outflow
-        reference_type: 'purchase',
-        reference_id: purchaseId,
-        balance: newBalance,
-        created_at: new Date().toISOString(),
-      });
+    const { error: cashError } = await supabase.from("cash_ledger").insert({
+      transaction_date: new Date().toISOString().split("T")[0],
+      transaction_type: "payment_made",
+      description: `Payment to ${purchase.suppliers?.name || "Supplier"} for Purchase #${purchase.purchase_number} (${paymentMethod})`,
+      debit: 0,
+      credit: paymentAmount, // Cash outflow
+      reference_type: "purchase",
+      reference_id: purchaseId,
+      balance: newBalance,
+      created_at: new Date().toISOString(),
+    });
 
     if (cashError) {
       return {
@@ -265,7 +276,7 @@ export async function processPurchasePayment(
   } catch (error) {
     return {
       success: false,
-      error: `Error processing payment: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      error: `Error processing payment: ${error instanceof Error ? error.message : "Unknown error"}`,
     };
   }
 }
@@ -276,17 +287,20 @@ export async function processPurchasePayment(
 export async function getPurchaseSummary(startDate: string, endDate: string) {
   try {
     const { data: purchases, error } = await supabase
-      .from('purchase_summary')
-      .select('*')
-      .gte('purchase_date', startDate)
-      .lte('purchase_date', endDate)
-      .order('purchase_date', { ascending: false });
+      .from("purchase_summary")
+      .select("*")
+      .gte("purchase_date", startDate)
+      .lte("purchase_date", endDate)
+      .order("purchase_date", { ascending: false });
 
     if (error) {
       return { success: false, error: error.message };
     }
 
-    const totalPurchased = purchases.reduce((sum: number, p: any) => sum + p.total_amount, 0);
+    const totalPurchased = purchases.reduce(
+      (sum: number, p: any) => sum + p.total_amount,
+      0,
+    );
 
     return {
       success: true,
@@ -294,14 +308,15 @@ export async function getPurchaseSummary(startDate: string, endDate: string) {
         period: `${startDate} to ${endDate}`,
         total_purchased: totalPurchased,
         purchase_count: purchases.length,
-        average_order_value: purchases.length > 0 ? totalPurchased / purchases.length : 0,
+        average_order_value:
+          purchases.length > 0 ? totalPurchased / purchases.length : 0,
         purchases,
       },
     };
   } catch (error) {
     return {
       success: false,
-      error: `Error fetching purchase summary: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      error: `Error fetching purchase summary: ${error instanceof Error ? error.message : "Unknown error"}`,
     };
   }
 }
@@ -311,13 +326,13 @@ export async function getPurchaseSummary(startDate: string, endDate: string) {
  */
 async function generatePurchaseNumber(): Promise<string> {
   const today = new Date();
-  const datePrefix = `PO${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+  const datePrefix = `PO${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, "0")}${String(today.getDate()).padStart(2, "0")}`;
 
   const { data: lastPurchase } = await supabase
-    .from('purchases')
-    .select('purchase_number')
-    .ilike('purchase_number', `${datePrefix}%`)
-    .order('purchase_number', { ascending: false })
+    .from("purchases")
+    .select("purchase_number")
+    .ilike("purchase_number", `${datePrefix}%`)
+    .order("purchase_number", { ascending: false })
     .limit(1)
     .single();
 
@@ -326,7 +341,7 @@ async function generatePurchaseNumber(): Promise<string> {
   }
 
   const lastNumber = parseInt(lastPurchase.purchase_number.slice(-3)) || 0;
-  return `${datePrefix}${String(lastNumber + 1).padStart(3, '0')}`;
+  return `${datePrefix}${String(lastNumber + 1).padStart(3, "0")}`;
 }
 
 /**
@@ -334,9 +349,9 @@ async function generatePurchaseNumber(): Promise<string> {
  */
 async function calculateCashBalance(): Promise<number> {
   const { data, error } = await supabase
-    .from('cash_ledger')
-    .select('balance')
-    .order('created_at', { ascending: false })
+    .from("cash_ledger")
+    .select("balance")
+    .order("created_at", { ascending: false })
     .limit(1)
     .single();
 

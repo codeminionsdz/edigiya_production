@@ -321,9 +321,20 @@ export async function getMyOrders() {
       return [];
     }
     
-    const result = await repo.getOrders({ sessionId, limit: 100 });
-    console.log('🔍 getMyOrders - Result:', result);
-    return result.orders.map((order: any) => {
+    const profile = await repo.getCustomerProfile(sessionId);
+    const lookups = await Promise.allSettled([
+      repo.getOrders({ sessionId, limit: 100 }),
+      profile?.email ? repo.getOrders({ email: profile.email, limit: 100 }) : Promise.resolve({ orders: [] }),
+      profile?.phone ? repo.getOrders({ phone: profile.phone, limit: 100 }) : Promise.resolve({ orders: [] }),
+    ]);
+    const orders = Array.from(new Map(
+      lookups.flatMap((lookup) => lookup.status === 'fulfilled' ? lookup.value.orders : [])
+        .map((order: any) => [order.id, order])
+    ).values()).sort((a: any, b: any) => {
+      return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+    });
+    console.log('🔍 getMyOrders - Result:', { lookups: lookups.map((lookup) => lookup.status), merged: orders.length });
+    return orders.map((order: any) => {
       if (order.delivery_method !== 'digital') return order;
       const payment = order.payments?.[0];
       const fulfillment = order.order_fulfillments?.[0];
@@ -350,7 +361,8 @@ export async function getOrderById(orderId: string) {
     }
     
     // Get the order
-    const order = await repo.getCustomerOrderById(orderId, sessionId);
+    const profile = await repo.getCustomerProfile(sessionId);
+    const order = await repo.getCustomerOrderById(orderId, sessionId, profile?.email, profile?.phone);
     
     console.log('🔍 getOrderById - Order:', order);
     return order;
@@ -368,6 +380,41 @@ export async function getDeliveredFulfillmentItems(orderId: string) {
   } catch (error) {
     console.error('Failed to get delivered fulfillment items:', error);
     return [];
+  }
+}
+
+export async function getMyDigitalLibrary() {
+  try {
+    const sessionId = await getAuthenticatedCustomerSessionId();
+    if (!sessionId) return [];
+    return await repo.getCustomerDigitalLibrary(sessionId);
+  } catch (error) {
+    console.error('Failed to get digital library:', error);
+    return [];
+  }
+}
+
+export async function getMyDigitalSecret(orderId: string, orderItemId: string) {
+  try {
+    const sessionId = await getAuthenticatedCustomerSessionId();
+    if (!sessionId) return { success: false, error: 'Digital delivery is not authorized' };
+    const secret = await repo.getCustomerDigitalSecret({ orderId, orderItemId, sessionId });
+    return { success: true, secret };
+  } catch (error) {
+    console.error('Failed to retrieve digital delivery:', error);
+    return { success: false, error: 'Digital delivery is not authorized' };
+  }
+}
+
+export async function redeemGuestDigitalDelivery(token: string) {
+  if (typeof token !== 'string' || token.length < 32 || token.length > 512) {
+    return { success: false, error: 'Digital delivery is not authorized' };
+  }
+  try {
+    return { success: true, secret: await repo.redeemGuestDigitalDelivery(token) };
+  } catch (error) {
+    console.error('Failed to redeem guest digital delivery:', error);
+    return { success: false, error: 'Digital delivery is not authorized' };
   }
 }
 

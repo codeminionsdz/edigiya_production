@@ -1,12 +1,18 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Plus, Trash2, X, Search, GripVertical } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { useState, useEffect } from "react";
+import { Plus, Trash2, X, Search, GripVertical } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -14,93 +20,94 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { toast } from "sonner"
+} from "@/components/ui/select";
+import { toast } from "sonner";
 import {
   getAllCustomPages,
   getPageProducts,
   addProductToPage,
   removeProductFromPage,
-} from "@/app/admin/navbar/actions"
-import { getProducts } from "@/app/(store)/actions"
+} from "@/app/admin/navbar/actions";
+import { getProducts } from "@/app/(store)/actions";
 
 interface CustomPage {
-  id: string
-  slug: string
-  title_ar: string
-  title_fr: string
-  is_active: boolean
+  id: string;
+  slug: string;
+  title_ar: string;
+  title_fr: string;
+  is_active: boolean;
 }
 
 interface Product {
-  id: string
-  name: string
-  sku: string
-  image_url?: string
+  id: string;
+  name: string;
+  sku: string;
+  image_url?: string;
 }
 
 interface PageProduct {
-  id: string
-  page_id: string
-  product_id: string
-  sort_order: number
-  products: Product
+  id: string;
+  page_id: string;
+  product_id: string;
+  sort_order: number;
+  products: Product;
 }
 
 export default function AdminPageProductsPage() {
-  const [pages, setPages] = useState<CustomPage[]>([])
-  const [selectedPageId, setSelectedPageId] = useState<string>("")
-  const [pageProducts, setPageProducts] = useState<PageProduct[]>([])
-  const [allProducts, setAllProducts] = useState<Product[]>([])
-  const [loading, setLoading] = useState(true)
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedProductId, setSelectedProductId] = useState<string>("")
-  const [isAddingProduct, setIsAddingProduct] = useState(false)
+  const [pages, setPages] = useState<CustomPage[]>([]);
+  const [selectedPageId, setSelectedPageId] = useState<string>("");
+  const [pageProducts, setPageProducts] = useState<PageProduct[]>([]);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedProductId, setSelectedProductId] = useState<string>("");
+  const [isAddingProduct, setIsAddingProduct] = useState(false);
 
   // Load pages and products
   useEffect(() => {
-    loadData()
-  }, [])
+    loadData();
+  }, []);
 
   // Debug logging
   useEffect(() => {
     if (allProducts.length > 0) {
-      console.log("✅ Products loaded:", allProducts.length, allProducts)
+      console.log("✅ Products loaded:", allProducts.length, allProducts);
     }
-  }, [allProducts])
+  }, [allProducts]);
 
   const loadData = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
       const [pagesResult, productsResult] = await Promise.all([
         getAllCustomPages(),
         getProducts(),
-      ])
+      ]);
 
       if (pagesResult.data) {
-        setPages(pagesResult.data as CustomPage[])
+        setPages(pagesResult.data as CustomPage[]);
         if (pagesResult.data.length > 0) {
-          setSelectedPageId(pagesResult.data[0].id)
+          setSelectedPageId(pagesResult.data[0].id);
         }
       }
 
       if (productsResult) {
         // Handle different response formats
-        let products = []
+        let products = [];
         if (Array.isArray(productsResult)) {
-          products = productsResult
-        } else if (productsResult.products && Array.isArray(productsResult.products)) {
-          products = productsResult.products
-        } else if (productsResult.data && Array.isArray(productsResult.data)) {
-          products = productsResult.data
+          products = productsResult;
+        } else if (
+          productsResult.products &&
+          Array.isArray(productsResult.products)
+        ) {
+          products = productsResult.products;
         }
 
         const productList = products.map((p: any) => ({
@@ -108,103 +115,106 @@ export default function AdminPageProductsPage() {
           name: p.title_fr || p.title_ar || "Unknown",
           sku: p.sku,
           image_url: p.image_url,
-        }))
-        setAllProducts(productList)
-        console.log("Loaded products:", productList.length)
+        }));
+        setAllProducts(productList);
+        console.log("Loaded products:", productList.length);
       }
     } catch (error) {
-      toast.error("Failed to load data")
-      console.error(error)
+      toast.error("Failed to load data");
+      console.error(error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   // Load page products when selected page changes
   useEffect(() => {
     if (selectedPageId) {
-      loadPageProducts()
+      loadPageProducts();
     }
-  }, [selectedPageId])
+  }, [selectedPageId]);
 
   const loadPageProducts = async () => {
-    if (!selectedPageId) return
+    if (!selectedPageId) return;
 
     try {
-      const result = await getPageProducts(selectedPageId)
+      const result = await getPageProducts(selectedPageId);
       if (result.data) {
-        setPageProducts(result.data as PageProduct[])
+        setPageProducts(result.data as PageProduct[]);
       }
     } catch (error) {
-      toast.error("Failed to load page products")
-      console.error(error)
+      toast.error("Failed to load page products");
+      console.error(error);
     }
-  }
+  };
 
   const handleAddProduct = async () => {
     if (!selectedPageId || !selectedProductId) {
-      toast.error("Please select a product")
-      return
+      toast.error("Please select a product");
+      return;
     }
 
     // Check if product already exists in page
     if (pageProducts.some((pp) => pp.product_id === selectedProductId)) {
-      toast.error("Product already added to this page")
-      return
+      toast.error("Product already added to this page");
+      return;
     }
 
-    setIsAddingProduct(true)
+    setIsAddingProduct(true);
     try {
-      const result = await addProductToPage(selectedPageId, selectedProductId, pageProducts.length)
+      const result = await addProductToPage(
+        selectedPageId,
+        selectedProductId,
+        pageProducts.length,
+      );
       if (result.error) {
-        toast.error(result.error)
-        return
+        toast.error(result.error);
+        return;
       }
 
-      toast.success("Product added to page")
-      await loadPageProducts()
-      setSelectedProductId("")
-      setIsDialogOpen(false)
+      toast.success("Product added to page");
+      await loadPageProducts();
+      setSelectedProductId("");
+      setIsDialogOpen(false);
     } catch (error) {
-      toast.error("Failed to add product")
-      console.error(error)
+      toast.error("Failed to add product");
+      console.error(error);
     } finally {
-      setIsAddingProduct(false)
+      setIsAddingProduct(false);
     }
-  }
+  };
 
   const handleRemoveProduct = async (pageId: string, productId: string) => {
-    if (!confirm("Are you sure you want to remove this product?")) return
+    if (!confirm("Are you sure you want to remove this product?")) return;
 
     try {
-      const result = await removeProductFromPage(pageId, productId)
+      const result = await removeProductFromPage(pageId, productId);
       if (result.error) {
-        toast.error(result.error)
-        return
+        toast.error(result.error);
+        return;
       }
 
-      toast.success("Product removed")
-      await loadPageProducts()
+      toast.success("Product removed");
+      await loadPageProducts();
     } catch (error) {
-      toast.error("Failed to remove product")
-      console.error(error)
+      toast.error("Failed to remove product");
+      console.error(error);
     }
-  }
+  };
 
-  const selectedPage = pages.find((p) => p.id === selectedPageId)
-  const filteredProducts = allProducts.filter(
-    (p) => {
-      const notAdded = !pageProducts.some((pp) => pp.product_id === p.id)
-      const productName = (p.name || "").toLowerCase()
-      const productSku = (p.sku || "").toLowerCase()
-      const query = searchQuery.toLowerCase()
-      const matchesSearch = productName.includes(query) || productSku.includes(query)
-      return notAdded && matchesSearch
-    }
-  )
+  const selectedPage = pages.find((p) => p.id === selectedPageId);
+  const filteredProducts = allProducts.filter((p) => {
+    const notAdded = !pageProducts.some((pp) => pp.product_id === p.id);
+    const productName = (p.name || "").toLowerCase();
+    const productSku = (p.sku || "").toLowerCase();
+    const query = searchQuery.toLowerCase();
+    const matchesSearch =
+      productName.includes(query) || productSku.includes(query);
+    return notAdded && matchesSearch;
+  });
 
   if (loading) {
-    return <div className="p-6">Loading...</div>
+    return <div className="p-6">Loading...</div>;
   }
 
   return (
@@ -212,7 +222,9 @@ export default function AdminPageProductsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Manage Page Products</CardTitle>
-          <CardDescription>Add and manage products for your custom pages</CardDescription>
+          <CardDescription>
+            Add and manage products for your custom pages
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Page Selection */}
@@ -238,9 +250,13 @@ export default function AdminPageProductsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-semibold">{selectedPage.title_fr}</p>
-                  <p className="text-sm text-muted-foreground">/{selectedPage.slug}</p>
+                  <p className="text-sm text-muted-foreground">
+                    /{selectedPage.slug}
+                  </p>
                 </div>
-                <Badge variant={selectedPage.is_active ? "default" : "secondary"}>
+                <Badge
+                  variant={selectedPage.is_active ? "default" : "secondary"}
+                >
                   {selectedPage.is_active ? "Active" : "Inactive"}
                 </Badge>
               </div>
@@ -275,10 +291,10 @@ export default function AdminPageProductsPage() {
                         placeholder="Search by name or SKU..."
                         value={searchQuery}
                         onChange={(e) => {
-                          const query = e.target.value
-                          setSearchQuery(query)
-                          console.log("Search query:", query)
-                          console.log("Available products:", allProducts)
+                          const query = e.target.value;
+                          setSearchQuery(query);
+                          console.log("Search query:", query);
+                          console.log("Available products:", allProducts);
                         }}
                       />
                     </div>
@@ -290,17 +306,23 @@ export default function AdminPageProductsPage() {
                           {searchQuery ? (
                             <>
                               <p>No products found matching "{searchQuery}"</p>
-                              <p className="text-xs">Try a different search term</p>
+                              <p className="text-xs">
+                                Try a different search term
+                              </p>
                             </>
                           ) : allProducts.length === 0 ? (
                             <>
                               <p>No products available</p>
-                              <p className="text-xs">Create some products first</p>
+                              <p className="text-xs">
+                                Create some products first
+                              </p>
                             </>
                           ) : (
                             <>
                               <p>All products already added to this page</p>
-                              <p className="text-xs">Or remove some to add different ones</p>
+                              <p className="text-xs">
+                                Or remove some to add different ones
+                              </p>
                             </>
                           )}
                         </div>
@@ -328,7 +350,9 @@ export default function AdminPageProductsPage() {
                               )}
                               <div>
                                 <p className="font-medium">{product.name}</p>
-                                <p className="text-xs text-muted-foreground">{product.sku}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {product.sku}
+                                </p>
                               </div>
                             </div>
                           </div>
@@ -383,14 +407,21 @@ export default function AdminPageProductsPage() {
                       />
                     )}
                     <div className="flex-1">
-                      <p className="font-medium">{pageProduct.products?.name}</p>
-                      <p className="text-xs text-muted-foreground">{pageProduct.products?.sku}</p>
+                      <p className="font-medium">
+                        {pageProduct.products?.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {pageProduct.products?.sku}
+                      </p>
                     </div>
                     <Button
                       size="sm"
                       variant="destructive"
                       onClick={() =>
-                        handleRemoveProduct(pageProduct.page_id, pageProduct.product_id)
+                        handleRemoveProduct(
+                          pageProduct.page_id,
+                          pageProduct.product_id,
+                        )
                       }
                     >
                       <Trash2 className="h-4 w-4" />
@@ -419,5 +450,5 @@ export default function AdminPageProductsPage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

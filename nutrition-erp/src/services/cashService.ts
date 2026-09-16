@@ -4,20 +4,20 @@
  * All financial operations must record to cash_ledger
  */
 
-import { createClient } from '@supabase/supabase-js';
-import { CashSummary, CashTransaction, ApiResponse } from '../types';
-import mockSupabase from '../lib/mockDatabase';
+import { createClient } from "@supabase/supabase-js";
+import { CashSummary, CashTransaction, ApiResponse } from "../types";
+import mockSupabase from "../lib/mockDatabase";
 
 // Use mock database if credentials are placeholders (development mode)
-const isDevMode = 
-  process.env.VITE_SUPABASE_URL?.includes('your-project') ||
-  process.env.VITE_SUPABASE_ANON_KEY?.includes('your-anon-key');
+const isDevMode =
+  process.env.VITE_SUPABASE_URL?.includes("your-project") ||
+  process.env.VITE_SUPABASE_ANON_KEY?.includes("your-anon-key");
 
-const supabase = isDevMode 
+const supabase = isDevMode
   ? (mockSupabase as any)
   : createClient(
-      process.env.VITE_SUPABASE_URL || '',
-      process.env.VITE_SUPABASE_ANON_KEY || ''
+      process.env.VITE_SUPABASE_URL || "",
+      process.env.VITE_SUPABASE_ANON_KEY || "",
     );
 
 /**
@@ -26,13 +26,13 @@ const supabase = isDevMode
 export async function getCashBalance(): Promise<ApiResponse<number>> {
   try {
     const { data, error } = await supabase
-      .from('cash_ledger')
-      .select('balance')
-      .order('created_at', { ascending: false })
+      .from("cash_ledger")
+      .select("balance")
+      .order("created_at", { ascending: false })
       .limit(1)
       .single();
 
-    if (error && error.code !== 'PGRST116') {
+    if (error && error.code !== "PGRST116") {
       return {
         success: false,
         error: error.message,
@@ -47,7 +47,7 @@ export async function getCashBalance(): Promise<ApiResponse<number>> {
   } catch (error) {
     return {
       success: false,
-      error: `Error getting cash balance: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      error: `Error getting cash balance: ${error instanceof Error ? error.message : "Unknown error"}`,
     };
   }
 }
@@ -58,11 +58,11 @@ export async function getCashBalance(): Promise<ApiResponse<number>> {
 export async function getCashSummary(): Promise<ApiResponse<CashSummary>> {
   try {
     const { data, error } = await supabase
-      .from('cash_summary')
-      .select('*')
+      .from("cash_summary")
+      .select("*")
       .single();
 
-    if (error && error.code !== 'PGRST116') {
+    if (error && error.code !== "PGRST116") {
       return {
         success: false,
         error: error.message,
@@ -82,7 +82,7 @@ export async function getCashSummary(): Promise<ApiResponse<CashSummary>> {
   } catch (error) {
     return {
       success: false,
-      error: `Error getting cash summary: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      error: `Error getting cash summary: ${error instanceof Error ? error.message : "Unknown error"}`,
     };
   }
 }
@@ -93,19 +93,21 @@ export async function getCashSummary(): Promise<ApiResponse<CashSummary>> {
 export async function getCashLedger(
   startDate: string,
   endDate: string,
-  transactionType?: string
-): Promise<ApiResponse<{ transactions: CashTransaction[]; summary: CashSummary }>> {
+  transactionType?: string,
+): Promise<
+  ApiResponse<{ transactions: CashTransaction[]; summary: CashSummary }>
+> {
   try {
     let query = supabase
-      .from('cash_ledger')
-      .select('*')
-      .gte('transaction_date', startDate)
-      .lte('transaction_date', endDate)
-      .order('transaction_date', { ascending: true })
-      .order('created_at', { ascending: true });
+      .from("cash_ledger")
+      .select("*")
+      .gte("transaction_date", startDate)
+      .lte("transaction_date", endDate)
+      .order("transaction_date", { ascending: true })
+      .order("created_at", { ascending: true });
 
     if (transactionType) {
-      query = query.eq('transaction_type', transactionType);
+      query = query.eq("transaction_type", transactionType);
     }
 
     const { data: transactions, error } = await query;
@@ -119,8 +121,14 @@ export async function getCashLedger(
 
     // Calculate period summary
     const periodSummary: CashSummary = {
-      total_inflow: (transactions || []).reduce((sum, t) => sum + (t.debit || 0), 0),
-      total_outflow: (transactions || []).reduce((sum, t) => sum + (t.credit || 0), 0),
+      total_inflow: (transactions || []).reduce(
+        (sum: number, t: CashTransaction) => sum + (t.debit || 0),
+        0,
+      ),
+      total_outflow: (transactions || []).reduce(
+        (sum: number, t: CashTransaction) => sum + (t.credit || 0),
+        0,
+      ),
       current_balance: transactions?.[transactions.length - 1]?.balance || 0,
     };
 
@@ -134,7 +142,7 @@ export async function getCashLedger(
   } catch (error) {
     return {
       success: false,
-      error: `Error getting cash ledger: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      error: `Error getting cash ledger: ${error instanceof Error ? error.message : "Unknown error"}`,
     };
   }
 }
@@ -143,12 +151,14 @@ export async function getCashLedger(
  * Initialize cash ledger with opening balance
  * Should only be called once when setting up the system
  */
-export async function initializeCashLedger(initialBalance: number): Promise<ApiResponse<CashTransaction>> {
+export async function initializeCashLedger(
+  initialBalance: number,
+): Promise<ApiResponse<CashTransaction>> {
   try {
     // Check if ledger already exists
     const { count, error: countError } = await supabase
-      .from('cash_ledger')
-      .select('*', { count: 'exact', head: true });
+      .from("cash_ledger")
+      .select("*", { count: "exact", head: true });
 
     if (countError) {
       return {
@@ -160,17 +170,17 @@ export async function initializeCashLedger(initialBalance: number): Promise<ApiR
     if ((count || 0) > 0) {
       return {
         success: false,
-        error: 'Cash ledger already initialized',
+        error: "Cash ledger already initialized",
       };
     }
 
     // Create initial transaction
     const { data: transaction, error } = await supabase
-      .from('cash_ledger')
+      .from("cash_ledger")
       .insert({
-        transaction_date: new Date().toISOString().split('T')[0],
-        transaction_type: 'initial_balance',
-        description: 'Opening balance',
+        transaction_date: new Date().toISOString().split("T")[0],
+        transaction_type: "initial_balance",
+        description: "Opening balance",
         debit: initialBalance,
         credit: 0,
         balance: initialBalance,
@@ -193,7 +203,7 @@ export async function initializeCashLedger(initialBalance: number): Promise<ApiR
   } catch (error) {
     return {
       success: false,
-      error: `Error initializing ledger: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      error: `Error initializing ledger: ${error instanceof Error ? error.message : "Unknown error"}`,
     };
   }
 }
@@ -208,7 +218,7 @@ export async function recordTransaction(
   debit: number = 0,
   credit: number = 0,
   referenceType?: string,
-  referenceId?: number
+  referenceId?: number,
 ): Promise<ApiResponse<CashTransaction>> {
   try {
     // Get current balance
@@ -228,9 +238,9 @@ export async function recordTransaction(
 
     // Record transaction
     const { data: transaction, error } = await supabase
-      .from('cash_ledger')
+      .from("cash_ledger")
       .insert({
-        transaction_date: new Date().toISOString().split('T')[0],
+        transaction_date: new Date().toISOString().split("T")[0],
         transaction_type: transactionType,
         description,
         debit,
@@ -257,7 +267,7 @@ export async function recordTransaction(
   } catch (error) {
     return {
       success: false,
-      error: `Error recording transaction: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      error: `Error recording transaction: ${error instanceof Error ? error.message : "Unknown error"}`,
     };
   }
 }
@@ -268,10 +278,10 @@ export async function recordTransaction(
 export async function getCashFlowByType(startDate: string, endDate: string) {
   try {
     const { data: transactions, error } = await supabase
-      .from('cash_ledger')
-      .select('*')
-      .gte('transaction_date', startDate)
-      .lte('transaction_date', endDate);
+      .from("cash_ledger")
+      .select("*")
+      .gte("transaction_date", startDate)
+      .lte("transaction_date", endDate);
 
     if (error) {
       return {
@@ -283,7 +293,7 @@ export async function getCashFlowByType(startDate: string, endDate: string) {
     // Group by transaction type
     const flowByType: Record<string, { inflow: number; outflow: number }> = {};
 
-    (transactions || []).forEach((t) => {
+    (transactions || []).forEach((t: CashTransaction) => {
       if (!flowByType[t.transaction_type]) {
         flowByType[t.transaction_type] = { inflow: 0, outflow: 0 };
       }
@@ -296,14 +306,20 @@ export async function getCashFlowByType(startDate: string, endDate: string) {
       data: {
         period: `${startDate} to ${endDate}`,
         flow_by_type: flowByType,
-        total_inflow: Object.values(flowByType).reduce((sum, f) => sum + f.inflow, 0),
-        total_outflow: Object.values(flowByType).reduce((sum, f) => sum + f.outflow, 0),
+        total_inflow: Object.values(flowByType).reduce(
+          (sum: number, f) => sum + f.inflow,
+          0,
+        ),
+        total_outflow: Object.values(flowByType).reduce(
+          (sum: number, f) => sum + f.outflow,
+          0,
+        ),
       },
     };
   } catch (error) {
     return {
       success: false,
-      error: `Error calculating cash flow: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      error: `Error calculating cash flow: ${error instanceof Error ? error.message : "Unknown error"}`,
     };
   }
 }
@@ -314,10 +330,10 @@ export async function getCashFlowByType(startDate: string, endDate: string) {
 export async function getDailyCashReport(date: string) {
   try {
     const { data: transactions, error } = await supabase
-      .from('cash_ledger')
-      .select('*')
-      .eq('transaction_date', date)
-      .order('created_at', { ascending: true });
+      .from("cash_ledger")
+      .select("*")
+      .eq("transaction_date", date)
+      .order("created_at", { ascending: true });
 
     if (error) {
       return {
@@ -326,9 +342,16 @@ export async function getDailyCashReport(date: string) {
       };
     }
 
-    const totalDebit = (transactions || []).reduce((sum, t) => sum + (t.debit || 0), 0);
-    const totalCredit = (transactions || []).reduce((sum, t) => sum + (t.credit || 0), 0);
-    const closingBalance = transactions?.[transactions.length - 1]?.balance || 0;
+    const totalDebit = (transactions || []).reduce(
+      (sum: number, t: CashTransaction) => sum + (t.debit || 0),
+      0,
+    );
+    const totalCredit = (transactions || []).reduce(
+      (sum: number, t: CashTransaction) => sum + (t.credit || 0),
+      0,
+    );
+    const closingBalance =
+      transactions?.[transactions.length - 1]?.balance || 0;
 
     return {
       success: true,
@@ -345,7 +368,7 @@ export async function getDailyCashReport(date: string) {
   } catch (error) {
     return {
       success: false,
-      error: `Error getting daily report: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      error: `Error getting daily report: ${error instanceof Error ? error.message : "Unknown error"}`,
     };
   }
 }
@@ -357,14 +380,14 @@ export async function getDailyCashReport(date: string) {
 export async function validateLedgerIntegrity() {
   try {
     const { data: allTransactions, error } = await supabase
-      .from('cash_ledger')
-      .select('*')
-      .order('created_at', { ascending: true });
+      .from("cash_ledger")
+      .select("*")
+      .order("created_at", { ascending: true });
 
     if (error || !allTransactions) {
       return {
         success: false,
-        error: error?.message || 'No transactions found',
+        error: error?.message || "No transactions found",
       };
     }
 
@@ -396,7 +419,7 @@ export async function validateLedgerIntegrity() {
   } catch (error) {
     return {
       success: false,
-      error: `Error validating ledger: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      error: `Error validating ledger: ${error instanceof Error ? error.message : "Unknown error"}`,
     };
   }
 }

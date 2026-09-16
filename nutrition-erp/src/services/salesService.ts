@@ -9,20 +9,20 @@
  * - Row-level locking prevents race conditions
  */
 
-import { createClient } from '@supabase/supabase-js';
-import { ApiResponse } from '../types';
-import mockSupabase from '../lib/mockDatabase';
+import { createClient } from "@supabase/supabase-js";
+import { ApiResponse } from "../types";
+import mockSupabase from "../lib/mockDatabase";
 
 // Use mock database if credentials are placeholders (development mode)
-const isDevMode = 
-  process.env.VITE_SUPABASE_URL?.includes('your-project') ||
-  process.env.VITE_SUPABASE_ANON_KEY?.includes('your-anon-key');
+const isDevMode =
+  process.env.VITE_SUPABASE_URL?.includes("your-project") ||
+  process.env.VITE_SUPABASE_ANON_KEY?.includes("your-anon-key");
 
-const supabase = isDevMode 
+const supabase = isDevMode
   ? (mockSupabase as any)
   : createClient(
-      process.env.VITE_SUPABASE_URL || '',
-      process.env.VITE_SUPABASE_ANON_KEY || ''
+      process.env.VITE_SUPABASE_URL || "",
+      process.env.VITE_SUPABASE_ANON_KEY || "",
     );
 
 /**
@@ -60,14 +60,16 @@ interface FIFODeductionResult {
 export async function processOrderSale(
   orderId: number,
   totalAmount: number,
-  paymentMethod: string = 'cash'
-): Promise<ApiResponse<{ success: boolean; message: string; details: string }>> {
+  paymentMethod: string = "cash",
+): Promise<
+  ApiResponse<{ success: boolean; message: string; details: string }>
+> {
   try {
     // Step 1: Fetch order with items
     const { data: order, error: orderError } = await supabase
-      .from('orders')
-      .select('*, order_items(*)')
-      .eq('id', orderId)
+      .from("orders")
+      .select("*, order_items(*)")
+      .eq("id", orderId)
       .single();
 
     if (orderError || !order) {
@@ -86,7 +88,7 @@ export async function processOrderSale(
         item.product_id,
         item.quantity,
         orderId,
-        'order'
+        "order",
       );
 
       // If deduction fails, return error (transaction rolls back on DB)
@@ -98,32 +100,30 @@ export async function processOrderSale(
       }
 
       deductionSummary.push(
-        `Product ${item.product_id}: ${deductionResult.total_deducted}/${item.quantity} units deducted from ${deductionResult.batches_used.length} batches`
+        `Product ${item.product_id}: ${deductionResult.total_deducted}/${item.quantity} units deducted from ${deductionResult.batches_used.length} batches`,
       );
 
       // Calculate cost based on actual deduction
       totalCost += deductionResult.batches_used.reduce(
         (sum, b) => sum + b.quantity_deducted * b.unit_cost,
-        0
+        0,
       );
     }
 
     // Step 3: Record cash transaction
     const currentBalance = await getCurrentCashBalance();
 
-    const { error: cashError } = await supabase
-      .from('cash_ledger')
-      .insert({
-        transaction_date: new Date().toISOString().split('T')[0],
-        transaction_type: 'sale',
-        description: `Payment received for Order #${orderId} (${paymentMethod})`,
-        debit: totalAmount, // Cash inflow
-        credit: 0,
-        reference_type: 'order',
-        reference_id: orderId,
-        balance: currentBalance + totalAmount,
-        created_at: new Date().toISOString(),
-      });
+    const { error: cashError } = await supabase.from("cash_ledger").insert({
+      transaction_date: new Date().toISOString().split("T")[0],
+      transaction_type: "sale",
+      description: `Payment received for Order #${orderId} (${paymentMethod})`,
+      debit: totalAmount, // Cash inflow
+      credit: 0,
+      reference_type: "order",
+      reference_id: orderId,
+      balance: currentBalance + totalAmount,
+      created_at: new Date().toISOString(),
+    });
 
     if (cashError) {
       return {
@@ -137,13 +137,13 @@ export async function processOrderSale(
       data: {
         success: true,
         message: `Order #${orderId} processed successfully`,
-        details: deductionSummary.join(' | '),
+        details: deductionSummary.join(" | "),
       },
     };
   } catch (error) {
     return {
       success: false,
-      error: `Error processing order sale: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      error: `Error processing order sale: ${error instanceof Error ? error.message : "Unknown error"}`,
     };
   }
 }
@@ -168,11 +168,11 @@ export async function deductStockFIFOAtomic(
   productId: number,
   quantityNeeded: number,
   orderId: number,
-  referenceType: string = 'order'
+  referenceType: string = "order",
 ): Promise<FIFODeductionResult> {
   try {
     // Call PostgreSQL function (atomic transaction with locking)
-    const { data, error } = await supabase.rpc('deduct_stock_fifo', {
+    const { data, error } = await supabase.rpc("deduct_stock_fifo", {
       p_product_id: productId,
       p_quantity_needed: quantityNeeded,
       p_order_id: orderId,
@@ -191,7 +191,7 @@ export async function deductStockFIFOAtomic(
     if (!data || data.length === 0) {
       return {
         success: false,
-        message: 'No response from database',
+        message: "No response from database",
         total_deducted: 0,
         batches_used: [],
       };
@@ -208,7 +208,7 @@ export async function deductStockFIFOAtomic(
   } catch (error) {
     return {
       success: false,
-      message: `FIFO deduction error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      message: `FIFO deduction error: ${error instanceof Error ? error.message : "Unknown error"}`,
       total_deducted: 0,
       batches_used: [],
     };
@@ -221,16 +221,16 @@ export async function deductStockFIFOAtomic(
  */
 async function getCurrentCashBalance(): Promise<number> {
   try {
-    const { data, error } = await supabase.rpc('get_current_cash_balance');
+    const { data, error } = await supabase.rpc("get_current_cash_balance");
 
     if (error || !data) {
-      console.error('Error getting cash balance:', error?.message);
+      console.error("Error getting cash balance:", error?.message);
       return 0;
     }
 
     return data || 0;
   } catch (error) {
-    console.error('Error calculating cash balance:', error);
+    console.error("Error calculating cash balance:", error);
     return 0;
   }
 }
@@ -241,18 +241,21 @@ async function getCurrentCashBalance(): Promise<number> {
 export async function getSalesSummary(startDate: string, endDate: string) {
   try {
     const { data: transactions, error } = await supabase
-      .from('cash_ledger')
-      .select('*')
-      .eq('transaction_type', 'sale')
-      .gte('transaction_date', startDate)
-      .lte('transaction_date', endDate)
-      .order('transaction_date', { ascending: false });
+      .from("cash_ledger")
+      .select("*")
+      .eq("transaction_type", "sale")
+      .gte("transaction_date", startDate)
+      .lte("transaction_date", endDate)
+      .order("transaction_date", { ascending: false });
 
     if (error) {
       return { success: false, error: error.message };
     }
 
-    const totalSales = transactions.reduce((sum, t) => sum + t.debit, 0);
+    const totalSales = transactions.reduce(
+      (sum: number, t: { debit: number }) => sum + t.debit,
+      0,
+    );
     const transactionCount = transactions.length;
 
     return {
@@ -261,14 +264,15 @@ export async function getSalesSummary(startDate: string, endDate: string) {
         period: `${startDate} to ${endDate}`,
         total_sales: totalSales,
         transaction_count: transactionCount,
-        average_transaction: transactionCount > 0 ? totalSales / transactionCount : 0,
+        average_transaction:
+          transactionCount > 0 ? totalSales / transactionCount : 0,
         transactions,
       },
     };
   } catch (error) {
     return {
       success: false,
-      error: `Error fetching sales summary: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      error: `Error fetching sales summary: ${error instanceof Error ? error.message : "Unknown error"}`,
     };
   }
 }

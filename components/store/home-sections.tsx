@@ -294,7 +294,7 @@ export function FeaturedProducts() {
           brand: product.brands?.name || "",
           rating: 5,
           reviewCount: 0,
-          inStock: (product.stock || 0) > 0,
+          inStock: product.inventory_type === "unlimited" || (product.stock || 0) > 0,
           stockCount: product.stock || 0,
           specs: {},
           tags: [],
@@ -341,7 +341,7 @@ export function FeaturedProducts() {
             {t.sections.featured}
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            {locale === "fr" ? "Notre selection pour vous" : "اختيارنا لك"}
+            {locale === "fr" ? "Notre sélection pour vous" : "اختيارنا لك"}
           </p>
         </div>
         <Link href="/shop">
@@ -352,24 +352,112 @@ export function FeaturedProducts() {
         </Link>
       </div>
 
-      <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="mb-6 bg-muted">
-          <TabsTrigger value="bestSellers">{t.sections.bestSellers}</TabsTrigger>
-          <TabsTrigger value="new">{t.sections.newArrivals}</TabsTrigger>
-          <TabsTrigger value="deals">{t.sections.deals}</TabsTrigger>
+      <Tabs value={tab} onValueChange={setTab} className="w-full">
+        <TabsList className="mb-6 inline-flex h-auto gap-2 rounded-full bg-[#edf2ed] p-1.5">
+          <TabsTrigger value="bestSellers" className="rounded-full px-4 py-2 text-sm font-medium data-[state=active]:bg-[#14235d] data-[state=active]:text-white">
+            {t.sections.bestSellers}
+          </TabsTrigger>
+          <TabsTrigger value="new" className="rounded-full px-4 py-2 text-sm font-medium data-[state=active]:bg-[#14235d] data-[state=active]:text-white">
+            {t.sections.newArrivals}
+          </TabsTrigger>
+          <TabsTrigger value="deals" className="rounded-full px-4 py-2 text-sm font-medium data-[state=active]:bg-[#14235d] data-[state=active]:text-white">
+            {t.sections.deals}
+          </TabsTrigger>
         </TabsList>
+
         {(Object.keys(filtered) as Array<keyof typeof filtered>).map((key) => (
-          <TabsContent key={key} value={key}>
+          <TabsContent key={key} value={key} className="mt-0">
             {isLoading ? (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
                 {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={`product-skeleton-${key}-${i}`} className="h-72 animate-pulse rounded-xl border border-border bg-muted/40" />
+                  <div key={`product-skeleton-${key}-${i}`} className="h-72 animate-pulse rounded-[1.5rem] border border-[#dfe6e0] bg-[#f3f7f2]" />
                 ))}
               </div>
             ) : filtered[key].length > 0 ? (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
                 {filtered[key].map((product, i) => (
-                  <ProductCard key={product.id} product={product} index={i} />
+                  <div key={product.id} className="group overflow-hidden rounded-[1.6rem] border border-[#dfe6e0] bg-white shadow-[0_10px_30px_rgba(20,35,93,0.04)] transition duration-300 hover:-translate-y-1 hover:border-[#2daa22]/50 hover:shadow-[0_18px_40px_rgba(20,35,93,0.10)] dark:border-white/10 dark:bg-white/[.04]">
+                    {(() => {
+                      const displayPrice = typeof product.price === "number" ? product.price : 0
+                      const hasComparePrice = typeof product.compareAtPrice === "number" && product.compareAtPrice > displayPrice
+
+                      return (
+                        <>
+                          <div className="relative overflow-hidden bg-[#eef4ef]">
+                            <Link href={`/product/${product.slug}`} className="block">
+                              <div className="relative aspect-[1.08] overflow-hidden">
+                                {product.images?.[0] ? (
+                                  <img
+                                    src={product.images[0]}
+                                    alt={product.name[locale] || product.name.fr}
+                                    className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                                    loading="lazy"
+                                  />
+                                ) : (
+                                  <div className="flex h-full items-center justify-center bg-[radial-gradient(circle_at_30%_20%,rgba(118,168,126,0.22),transparent_38%),linear-gradient(135deg,#edf6ee_0%,#dfeee1_100%)]">
+                                    <span className="text-3xl font-black text-[#14235d]/20">E</span>
+                                  </div>
+                                )}
+
+                                {product.isDeal && (
+                                  <span className="absolute left-3 top-3 rounded-full bg-[#f04d4d] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white">
+                                    {locale === "fr" ? "Promo" : "عرض"}
+                                  </span>
+                                )}
+
+                                {product.isBestSeller && (
+                                  <span className="absolute right-3 top-3 rounded-full bg-[#14235d] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white">
+                                    {locale === "fr" ? "Top" : "مميز"}
+                                  </span>
+                                )}
+                              </div>
+                            </Link>
+                          </div>
+
+                          <div className="space-y-3 p-4">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#2daa22]">
+                                {product.brand || (locale === "fr" ? "Edigiya" : "إديجيا")}
+                              </span>
+                              <span className="text-[10px] font-medium text-[#536078] dark:text-[#b8c0d0]">
+                                {product.stockCount > 0 ? (locale === "fr" ? "En stock" : "متوفر") : (locale === "fr" ? "Épuisé" : "غير متوفر")}
+                              </span>
+                            </div>
+
+                            <Link href={`/product/${product.slug}`} className="block">
+                              <h3 className="line-clamp-2 min-h-[3rem] text-base font-bold leading-5 text-[#14235d] transition hover:text-[#2daa22] dark:text-white">
+                                {product.name[locale] || product.name.fr}
+                              </h3>
+                            </Link>
+
+                            <p className="line-clamp-2 text-xs leading-5 text-[#536078] dark:text-[#b8c0d0]">
+                              {product.description[locale] || product.description.fr}
+                            </p>
+
+                            <div className="flex items-end justify-between gap-3 pt-1">
+                              <div>
+                                <p className="text-xl font-black tracking-[-0.04em] text-[#14235d] dark:text-white">
+                                  {new Intl.NumberFormat("fr-DZ", { maximumFractionDigits: 0 }).format(displayPrice)} DA
+                                </p>
+                                {hasComparePrice && (
+                                  <p className="text-xs text-[#7a8496] line-through">
+                                    {new Intl.NumberFormat("fr-DZ", { maximumFractionDigits: 0 }).format(product.compareAtPrice ?? 0)} DA
+                                  </p>
+                                )}
+                              </div>
+
+                              <Link
+                                href={`/product/${product.slug}`}
+                                className="inline-flex items-center justify-center rounded-full bg-[#14235d] px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-white transition hover:bg-[#24366f]"
+                              >
+                                {locale === "fr" ? "Voir" : "عرض"}
+                              </Link>
+                            </div>
+                          </div>
+                        </>
+                      )
+                    })()}
+                  </div>
                 ))}
               </div>
             ) : (

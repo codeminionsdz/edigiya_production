@@ -1,14 +1,100 @@
-"use client"
+"use client";
 
-import Image from "next/image"
-import Link from "next/link"
-import { ArrowUpRight, Check, ShoppingBag } from "lucide-react"
-import { useLocale } from "@/lib/locale-context"
-import { useCart } from "@/lib/cart-store"
-import type { Product } from "@/lib/data"
-import { formatPrice } from "@/lib/data"
+import Image from "next/image";
+import Link from "next/link";
+import { ArrowUpRight, Check, ShoppingBag } from "lucide-react";
+import { useLocale } from "@/lib/locale-context";
+import { useCart } from "@/lib/cart-store";
+import type { Product } from "@/lib/data";
+import { formatPrice } from "@/lib/data";
 
 export function ProductCard({ product }: { product: Product; index?: number }) {
-  const { locale } = useLocale(); const { addItem } = useCart(); const title = product.name[locale] || product.name.fr; const hasDiscount = Boolean(product.compareAtPrice && product.compareAtPrice > product.price)
-  return <article className="group flex min-w-0 flex-col border border-[#dfe6e0] bg-white transition duration-200 hover:-translate-y-1 hover:border-[#2daa22]/70 hover:shadow-lg hover:shadow-[#14235d]/5 dark:border-white/10 dark:bg-white/[.06]"><Link href={"/product/" + product.slug} className="relative aspect-[1.06] overflow-hidden bg-[#f0f4ef] dark:bg-white/[.06]">{hasDiscount && <span className="absolute start-3 top-3 z-10 text-[10px] font-bold uppercase tracking-[.14em] text-[#2daa22]">{locale === "fr" ? "Offre" : "عرض"}</span>}{product.images?.[0] ? <Image src={product.images[0]} alt={title} fill unoptimized className="object-contain p-6 transition duration-500 group-hover:scale-105" sizes="(max-width: 640px) 50vw, 25vw" /> : <Image src="/brand/edigiya-mark.svg" alt="" fill className="object-contain p-12 opacity-30" sizes="25vw" />}</Link><div className="flex flex-1 flex-col gap-3 p-4"><div><p className="text-xs text-[#7a8496]">{product.brand || (locale === "fr" ? "Produit numérique" : "منتج رقمي")}</p><Link href={"/product/" + product.slug}><h3 className="mt-1 line-clamp-2 min-h-11 font-semibold leading-5 text-[#14235d] dark:text-white">{title}</h3></Link></div><p className="line-clamp-2 text-xs leading-5 text-[#536078] dark:text-[#b8c0d0]">{product.description[locale] || product.description.fr}</p><div className="mt-auto flex items-end justify-between gap-3"><div><span className="block text-lg font-bold text-[#14235d] dark:text-white">{formatPrice(product.price)}</span>{hasDiscount && <span className="text-xs text-muted-foreground line-through">{formatPrice(product.compareAtPrice as number)}</span>}</div><button type="button" onClick={() => addItem(product)} disabled={!product.inStock} aria-label={locale === "fr" ? "Ajouter au panier" : "إضافة إلى السلة"} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#e7f4e5] text-[#2daa22] transition hover:bg-[#2daa22] hover:text-white disabled:opacity-40">{product.inStock ? <ShoppingBag className="h-4 w-4" /> : <Check className="h-4 w-4" />}</button></div><Link href={"/product/" + product.slug} className="flex items-center gap-1 text-xs font-bold text-[#2daa22]">{locale === "fr" ? "Voir le produit" : "عرض المنتج"}<ArrowUpRight className="h-3.5 w-3.5 rtl:rotate-180" /></Link></div></article>
+  const { locale } = useLocale();
+  const { addItem } = useCart();
+  const title = product.name[locale] || product.name.fr;
+  const hasDiscount = Boolean(
+    product.compareAtPrice && product.compareAtPrice > (product.price ?? 0),
+  );
+  return (
+    <article className="group flex min-w-0 flex-col border border-[#dfe6e0] bg-white transition duration-200 hover:-translate-y-1 hover:border-[#2daa22]/70 hover:shadow-lg hover:shadow-[#14235d]/5 dark:border-white/10 dark:bg-white/[.06]">
+      <Link
+        href={"/product/" + product.slug}
+        className="relative aspect-[1.06] overflow-hidden bg-[#f0f4ef] dark:bg-white/[.06]"
+      >
+        {hasDiscount && (
+          <span className="absolute start-3 top-3 z-10 text-[10px] font-bold uppercase tracking-[.14em] text-[#2daa22]">
+            {locale === "fr" ? "Offre" : "عرض"}
+          </span>
+        )}
+        {product.images?.[0] ? (
+          <Image
+            src={product.images[0]}
+            alt={title}
+            fill
+            unoptimized
+            className="store-product-image object-contain p-6 transition duration-500 group-hover:scale-105"
+            sizes="(max-width: 640px) 50vw, 25vw"
+          />
+        ) : (
+          <Image
+            src="/brand/edigiya-mark.svg"
+            alt=""
+            fill
+            className="object-contain p-12 opacity-30"
+            sizes="25vw"
+          />
+        )}
+      </Link>
+      <div className="flex flex-1 flex-col gap-3 p-4">
+        <div>
+          <p className="text-xs text-[#7a8496]">
+            {product.brand ||
+              (locale === "fr" ? "Produit numérique" : "منتج رقمي")}
+          </p>
+          <Link href={"/product/" + product.slug}>
+            <h3 className="mt-1 line-clamp-2 min-h-11 font-semibold leading-5 text-[#14235d] dark:text-white">
+              {title}
+            </h3>
+          </Link>
+        </div>
+        <p className="line-clamp-2 text-xs leading-5 text-[#536078] dark:text-[#b8c0d0]">
+          {product.description[locale] || product.description.fr}
+        </p>
+        <div className="mt-auto flex items-end justify-between gap-3">
+          <div>
+            <span className="block text-lg font-bold text-[#14235d] dark:text-white">
+              {formatPrice(product.price)}
+            </span>
+            {hasDiscount && (
+              <span className="text-xs text-muted-foreground line-through">
+                {formatPrice(product.compareAtPrice as number)}
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => addItem(product)}
+            disabled={!product.inStock}
+            aria-label={
+              locale === "fr" ? "Ajouter au panier" : "إضافة إلى السلة"
+            }
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#e7f4e5] text-[#2daa22] transition hover:bg-[#2daa22] hover:text-white disabled:opacity-40"
+          >
+            {product.inStock ? (
+              <ShoppingBag className="h-4 w-4" />
+            ) : (
+              <Check className="h-4 w-4" />
+            )}
+          </button>
+        </div>
+        <Link
+          href={"/product/" + product.slug}
+          className="flex items-center gap-1 text-xs font-bold text-[#2daa22]"
+        >
+          {locale === "fr" ? "Voir le produit" : "عرض المنتج"}
+          <ArrowUpRight className="h-3.5 w-3.5 rtl:rotate-180" />
+        </Link>
+      </div>
+    </article>
+  );
 }

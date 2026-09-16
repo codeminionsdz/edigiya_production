@@ -1,24 +1,278 @@
-"use client"
+"use client";
 
-import Image from "next/image"
-import Link from "next/link"
-import { useEffect, useState } from "react"
-import { ArrowRight, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
-import { useLocale } from "@/lib/locale-context"
-import { useCart } from "@/lib/cart-store"
-import { formatPrice, type Product } from "@/lib/data"
-import { getProducts } from "@/app/(store)/actions"
-import { ProductCard } from "@/components/store/product-card"
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { ArrowRight, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { useLocale } from "@/lib/locale-context";
+import { useCart } from "@/lib/cart-store";
+import { formatPrice, type Product } from "@/lib/data";
+import { getProducts } from "@/app/(store)/actions";
+import { ProductCard } from "@/components/store/product-card";
 
 function mapProduct(row: any): Product {
-  return { id: row.id, slug: row.slug, name: { fr: row.title_fr || "", ar: row.title_ar || row.title_fr || "" }, description: { fr: row.description_fr || "", ar: row.description_ar || row.description_fr || "" }, price: Number(row.price_dzd || 0), compareAtPrice: row.compare_at_price_dzd || undefined, images: (row.product_images || []).map((image: any) => String(image?.url || "")).filter((url: string) => url.startsWith("/") || /^https?:\/\//i.test(url)), category: row.categories?.slug || "", department: row.departments?.slug || "", brand: row.brands?.name || "", rating: 0, reviewCount: 0, inStock: Number(row.stock || 0) > 0, stockCount: Number(row.stock || 0), specs: {}, tags: [], isBestSeller: Boolean(row.is_featured), isDeal: false }
+  return {
+    id: row.id,
+    slug: row.slug,
+    name: { fr: row.title_fr || "", ar: row.title_ar || row.title_fr || "" },
+    description: {
+      fr: row.description_fr || "",
+      ar: row.description_ar || row.description_fr || "",
+    },
+    price: Number(row.price_dzd || 0),
+    compareAtPrice: row.compare_at_price_dzd || undefined,
+    images: (row.product_images || [])
+      .map((image: any) => String(image?.url || ""))
+      .filter(
+        (url: string) => url.startsWith("/") || /^https?:\/\//i.test(url),
+      ),
+    category: row.categories?.slug || "",
+    department: row.departments?.slug || "",
+    brand: row.brands?.name || "",
+    rating: 0,
+    reviewCount: 0,
+    inStock: Number(row.stock || 0) > 0,
+    stockCount: Number(row.stock || 0),
+    specs: {},
+    tags: [],
+    isBestSeller: Boolean(row.is_featured),
+    isDeal: false,
+  };
 }
 
 export default function CartPage() {
-  const { locale, t } = useLocale(); const { items, removeItem, updateQuantity, totalPrice } = useCart(); const [crossSell, setCrossSell] = useState<Product[]>([])
-  useEffect(() => { let active = true; void getProducts({ limit: 8 }).then((result) => { if (!active) return; setCrossSell((result?.products || []).map(mapProduct).filter((p) => !items.some((item) => item.product.id === p.id) && p.inStock).slice(0, 4)) }).catch(() => { if (active) setCrossSell([]) }); return () => { active = false } }, [items])
-  if (items.length === 0) return <main dir={locale === "ar" ? "rtl" : "ltr"} className="mx-auto flex min-h-[70vh] max-w-3xl flex-col items-center justify-center px-5 py-20 text-center"><div className="flex h-20 w-20 items-center justify-center border border-primary/20 bg-primary/5 text-primary"><ShoppingBag className="h-9 w-9" /></div><h1 className="mt-7 font-heading text-3xl font-semibold">{t.cart.empty}</h1><p className="mt-3 max-w-md text-sm leading-6 text-muted-foreground">{locale === "fr" ? "Explorez la boutique pour trouver votre prochain produit numérique." : "اكتشف المتجر للعثور على منتجك الرقمي القادم."}</p><Link href="/shop"><Button className="mt-7 h-12 gap-2 px-6">{t.cart.continueShopping}<ArrowRight className="h-4 w-4 rtl:rotate-180" /></Button></Link></main>
-  return <main dir={locale === "ar" ? "rtl" : "ltr"} className="mx-auto max-w-7xl px-5 py-10 sm:px-8 lg:px-12 lg:py-14"><div className="mb-10 border-b border-border pb-7"><p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">Edigiya / {locale === "fr" ? "Panier" : "السلة"}</p><div className="mt-3 flex items-end justify-between gap-4"><h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">{t.cart.title}</h1><span className="text-sm text-muted-foreground">{items.length} {locale === "fr" ? "article(s)" : "منتج"}</span></div></div><div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_360px]"><section><div className="border-y border-border">{items.map((item) => { const unitPrice = item.unitPrice ?? item.product.price; const name = item.product.name[locale] || item.product.name.fr; return <article key={item.product.id + "-" + (item.variantId || "base")} className="flex gap-4 border-b border-border py-5 last:border-b-0 sm:gap-6"><Link href={"/product/" + item.product.slug} className="relative h-28 w-28 shrink-0 overflow-hidden bg-[#f1f4ef] sm:h-32 sm:w-32">{item.product.images?.[0] ? <Image src={item.product.images[0]} alt={name} fill unoptimized className="object-contain p-3" sizes="128px" /> : <ShoppingBag className="m-auto h-8 w-8 text-primary/40" />}</Link><div className="flex min-w-0 flex-1 flex-col"><div className="flex items-start justify-between gap-3"><div><Link href={"/product/" + item.product.slug} className="font-semibold hover:text-primary">{name}</Link>{item.variantId && <p className="mt-1 text-xs text-muted-foreground">{locale === "fr" ? "Variante sélectionnée" : "الخيار المحدد"}</p>}</div><button type="button" onClick={() => removeItem(item.product.id, item.variantId)} aria-label={locale === "fr" ? "Supprimer" : "حذف"} className="p-2 text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></button></div><div className="mt-auto flex flex-wrap items-end justify-between gap-4 pt-5"><div className="flex items-center border border-border"><button type="button" onClick={() => updateQuantity(item.product.id, item.quantity - 1, item.variantId)} aria-label={locale === "fr" ? "Diminuer" : "إنقاص"} className="flex h-10 w-10 items-center justify-center hover:bg-muted"><Minus className="h-3.5 w-3.5" /></button><span className="flex h-10 w-10 items-center justify-center border-x border-border text-sm font-semibold">{item.quantity}</span><button type="button" onClick={() => updateQuantity(item.product.id, item.quantity + 1, item.variantId)} aria-label={locale === "fr" ? "Augmenter" : "زيادة"} className="flex h-10 w-10 items-center justify-center hover:bg-muted"><Plus className="h-3.5 w-3.5" /></button></div><div className="text-end"><p className="text-xs text-muted-foreground">{formatPrice(unitPrice)} / {locale === "fr" ? "unité" : "وحدة"}</p><p className="mt-1 font-heading text-lg font-semibold">{formatPrice(unitPrice * item.quantity)}</p></div></div></div></article> })}</div><Link href="/shop" className="mt-5 inline-flex"><Button variant="ghost" className="gap-2 text-primary">← {t.cart.continueShopping}</Button></Link></section><aside className="h-fit border border-border bg-card p-6 lg:sticky lg:top-24"><h2 className="font-heading text-xl font-semibold">{t.cart.summary}</h2><Separator className="my-6" /><div className="space-y-4 text-sm"><div className="flex justify-between"><span className="text-muted-foreground">{t.cart.subtotal}</span><span className="font-medium">{formatPrice(totalPrice)}</span></div><div className="flex justify-between"><span className="text-muted-foreground">{locale === "fr" ? "Livraison digitale" : "التوصيل الرقمي"}</span><span className="font-medium">0 DA</span></div></div><Separator className="my-6" /><div className="flex items-end justify-between"><span className="font-heading text-lg font-semibold">{t.cart.total}</span><span className="font-heading text-2xl font-semibold">{formatPrice(totalPrice)}</span></div><p className="mt-4 text-xs leading-5 text-muted-foreground">{locale === "fr" ? "Vous payez uniquement le prix de vos produits." : "ستدفع فقط سعر منتجاتك."}</p><Link href="/checkout" className="mt-7 block"><Button size="lg" className="h-13 w-full gap-2">{t.cart.checkout}<ArrowRight className="h-4 w-4 rtl:rotate-180" /></Button></Link></aside></div>{crossSell.length > 0 && <section className="mt-16 border-t border-border pt-10"><h2 className="font-heading text-2xl font-semibold">{t.cart.crossSell}</h2><div className="mt-7 grid grid-cols-2 gap-4 sm:grid-cols-4">{crossSell.map((product) => <ProductCard key={product.id} product={product} />)}</div></section>}</main>
+  const { locale, t } = useLocale();
+  const { items, removeItem, updateQuantity, totalPrice } = useCart();
+  const [crossSell, setCrossSell] = useState<Product[]>([]);
+  useEffect(() => {
+    let active = true;
+    void getProducts({ limit: 8 })
+      .then((result) => {
+        if (!active) return;
+        setCrossSell(
+          (result?.products || [])
+            .map(mapProduct)
+            .filter(
+              (p) =>
+                !items.some((item) => item.product.id === p.id) && p.inStock,
+            )
+            .slice(0, 4),
+        );
+      })
+      .catch(() => {
+        if (active) setCrossSell([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [items]);
+  if (items.length === 0)
+    return (
+      <main
+        dir={locale === "ar" ? "rtl" : "ltr"}
+        className="mx-auto flex min-h-[70vh] max-w-3xl flex-col items-center justify-center px-5 py-20 text-center"
+      >
+        <div className="flex h-20 w-20 items-center justify-center border border-primary/20 bg-primary/5 text-primary">
+          <ShoppingBag className="h-9 w-9" />
+        </div>
+        <h1 className="mt-7 font-heading text-3xl font-semibold">
+          {t.cart.empty}
+        </h1>
+        <p className="mt-3 max-w-md text-sm leading-6 text-muted-foreground">
+          {locale === "fr"
+            ? "Explorez la boutique pour trouver votre prochain produit numérique."
+            : "اكتشف المتجر للعثور على منتجك الرقمي القادم."}
+        </p>
+        <Link href="/shop">
+          <Button className="mt-7 h-12 gap-2 px-6">
+            {t.cart.continueShopping}
+            <ArrowRight className="h-4 w-4 rtl:rotate-180" />
+          </Button>
+        </Link>
+      </main>
+    );
+  return (
+    <main
+      dir={locale === "ar" ? "rtl" : "ltr"}
+      className="mx-auto max-w-7xl px-5 py-10 sm:px-8 lg:px-12 lg:py-14"
+    >
+      <div className="mb-10 border-b border-border pb-7">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">
+          Edigiya / {locale === "fr" ? "Panier" : "السلة"}
+        </p>
+        <div className="mt-3 flex items-end justify-between gap-4">
+          <h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
+            {t.cart.title}
+          </h1>
+          <span className="text-sm text-muted-foreground">
+            {items.length} {locale === "fr" ? "article(s)" : "منتج"}
+          </span>
+        </div>
+      </div>
+      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <section>
+          <div className="border-y border-border">
+            {items.map((item) => {
+              const unitPrice = item.unitPrice ?? item.product.price ?? 0;
+              const name = item.product.name[locale] || item.product.name.fr;
+              return (
+                <article
+                  key={item.product.id + "-" + (item.variantId || "base")}
+                  className="flex gap-4 border-b border-border py-5 last:border-b-0 sm:gap-6"
+                >
+                  <Link
+                    href={"/product/" + item.product.slug}
+                    className="relative h-28 w-28 shrink-0 overflow-hidden bg-[#f1f4ef] sm:h-32 sm:w-32"
+                  >
+                    {item.product.images?.[0] ? (
+                      <Image
+                        src={item.product.images[0]}
+                        alt={name}
+                        fill
+                        unoptimized
+                        className="object-contain p-3"
+                        sizes="128px"
+                      />
+                    ) : (
+                      <ShoppingBag className="m-auto h-8 w-8 text-primary/40" />
+                    )}
+                  </Link>
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <Link
+                          href={"/product/" + item.product.slug}
+                          className="font-semibold hover:text-primary"
+                        >
+                          {name}
+                        </Link>
+                        {item.variantId && (
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {locale === "fr"
+                              ? "Variante sélectionnée"
+                              : "الخيار المحدد"}
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          removeItem(item.product.id, item.variantId)
+                        }
+                        aria-label={locale === "fr" ? "Supprimer" : "حذف"}
+                        className="p-2 text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <div className="mt-auto flex flex-wrap items-end justify-between gap-4 pt-5">
+                      <div className="flex items-center border border-border">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            updateQuantity(
+                              item.product.id,
+                              item.quantity - 1,
+                              item.variantId,
+                            )
+                          }
+                          aria-label={locale === "fr" ? "Diminuer" : "إنقاص"}
+                          className="flex h-10 w-10 items-center justify-center hover:bg-muted"
+                        >
+                          <Minus className="h-3.5 w-3.5" />
+                        </button>
+                        <span className="flex h-10 w-10 items-center justify-center border-x border-border text-sm font-semibold">
+                          {item.quantity}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            updateQuantity(
+                              item.product.id,
+                              item.quantity + 1,
+                              item.variantId,
+                            )
+                          }
+                          aria-label={locale === "fr" ? "Augmenter" : "زيادة"}
+                          className="flex h-10 w-10 items-center justify-center hover:bg-muted"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                      <div className="text-end">
+                        <p className="text-xs text-muted-foreground">
+                          {formatPrice(unitPrice)} /{" "}
+                          {locale === "fr" ? "unité" : "وحدة"}
+                        </p>
+                        <p className="mt-1 font-heading text-lg font-semibold">
+                          {formatPrice(unitPrice * item.quantity)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+          <Link href="/shop" className="mt-5 inline-flex">
+            <Button variant="ghost" className="gap-2 text-primary">
+              ← {t.cart.continueShopping}
+            </Button>
+          </Link>
+        </section>
+        <aside className="h-fit border border-border bg-card p-6 lg:sticky lg:top-24">
+          <h2 className="font-heading text-xl font-semibold">
+            {t.cart.summary}
+          </h2>
+          <Separator className="my-6" />
+          <div className="space-y-4 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">{t.cart.subtotal}</span>
+              <span className="font-medium">{formatPrice(totalPrice)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">
+                {locale === "fr" ? "Livraison digitale" : "التوصيل الرقمي"}
+              </span>
+              <span className="font-medium">0 DA</span>
+            </div>
+          </div>
+          <Separator className="my-6" />
+          <div className="flex items-end justify-between">
+            <span className="font-heading text-lg font-semibold">
+              {t.cart.total}
+            </span>
+            <span className="font-heading text-2xl font-semibold">
+              {formatPrice(totalPrice)}
+            </span>
+          </div>
+          <p className="mt-4 text-xs leading-5 text-muted-foreground">
+            {locale === "fr"
+              ? "Vous payez uniquement سعر منتجاتك."
+              : "ستدفع فقط سعر منتجاتك."}
+          </p>
+          <Link href="/checkout" className="mt-7 block">
+            <Button size="lg" className="h-13 w-full gap-2">
+              {t.cart.checkout}
+              <ArrowRight className="h-4 w-4 rtl:rotate-180" />
+            </Button>
+          </Link>
+        </aside>
+      </div>
+      {crossSell.length > 0 && (
+        <section className="mt-16 border-t border-border pt-10">
+          <h2 className="font-heading text-2xl font-semibold">
+            {t.cart.crossSell}
+          </h2>
+          <div className="mt-7 grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {crossSell.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        </section>
+      )}
+    </main>
+  );
 }

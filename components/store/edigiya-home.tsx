@@ -1,47 +1,613 @@
-"use client"
+"use client";
 
-import Image from "next/image"
-import Link from "next/link"
-import { useEffect, useMemo, useState } from "react"
-import { ArrowRight, ChevronDown, Menu, MessageCircle, Search, ShoppingBag, UserRound, X } from "lucide-react"
-import { useLocale } from "@/lib/locale-context"
-import { useCart } from "@/lib/cart-store"
-import { getDepartments, getProducts } from "@/app/(store)/actions"
-import { DEFAULT_STORE_SETTINGS, fetchStoreSettings, toWhatsAppUrl } from "@/lib/store-settings"
-import { formatPrice, type Product } from "@/lib/data"
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import {
+  ArrowRight,
+  ChevronDown,
+  Menu,
+  MessageCircle,
+  Search,
+  ShoppingBag,
+  UserRound,
+  X,
+} from "lucide-react";
+import { useLocale } from "@/lib/locale-context";
+import { useCart } from "@/lib/cart-store";
+import { getDepartments, getProducts } from "@/app/(store)/actions";
+import {
+  DEFAULT_STORE_SETTINGS,
+  fetchStoreSettings,
+  toWhatsAppUrl,
+} from "@/lib/store-settings";
+import { formatPrice, type Product } from "@/lib/data";
 
-type Department = { id: string; slug: string; name_fr: string; name_ar: string; image_url?: string | null }
-const legacyHints = ["gaming", "laptop", "ordinateur", "monitor", "camera", "imprimante", "router", "wi-fi", "apple", "nvidia", "intel", "amd", "corsair", "logitech", "souris", "clavier", "ssd", "ram"]
+type Department = {
+  id: string;
+  slug: string;
+  name_fr: string;
+  name_ar: string;
+  image_url?: string | null;
+};
+const legacyHints = [
+  "gaming",
+  "laptop",
+  "ordinateur",
+  "monitor",
+  "camera",
+  "imprimante",
+  "router",
+  "wi-fi",
+  "apple",
+  "nvidia",
+  "intel",
+  "amd",
+  "corsair",
+  "logitech",
+  "souris",
+  "clavier",
+  "ssd",
+  "ram",
+];
 
 function compatible(row: any) {
-  const text = `${row?.departments?.slug || ""} ${row?.title_fr || ""} ${row?.title_ar || ""}`.toLowerCase()
-  return !legacyHints.some((hint) => text.includes(hint))
+  const text =
+    `${row?.departments?.slug || ""} ${row?.title_fr || ""} ${row?.title_ar || ""}`.toLowerCase();
+  return !legacyHints.some((hint) => text.includes(hint));
 }
 function toProduct(row: any): Product {
-  return { id: row.id, slug: row.slug, name: { fr: row.title_fr || "", ar: row.title_ar || row.title_fr || "" }, description: { fr: row.description_fr || "", ar: row.description_ar || row.description_fr || "" }, price: Number(row.price_dzd || 0), compareAtPrice: row.compare_at_price_dzd ? Number(row.compare_at_price_dzd) : undefined, images: (row.product_images || []).map((image: any) => image.url).filter(Boolean), category: row.categories?.slug || "", department: row.departments?.slug || "", brand: row.brands?.name || "", rating: 0, reviewCount: 0, inStock: Number(row.stock || 0) > 0, stockCount: Number(row.stock || 0), specs: {}, tags: [], isDeal: Boolean(row.compare_at_price_dzd && row.compare_at_price_dzd > row.price_dzd), isBestSeller: Boolean(row.is_featured) }
+  return {
+    id: row.id,
+    slug: row.slug,
+    name: { fr: row.title_fr || "", ar: row.title_ar || row.title_fr || "" },
+    description: {
+      fr: row.description_fr || "",
+      ar: row.description_ar || row.description_fr || "",
+    },
+    price: Number(row.price_dzd || 0),
+    compareAtPrice: row.compare_at_price_dzd
+      ? Number(row.compare_at_price_dzd)
+      : undefined,
+    images: (row.product_images || [])
+      .map((image: any) => image.url)
+      .filter(Boolean),
+    category: row.categories?.slug || "",
+    department: row.departments?.slug || "",
+    brand: row.brands?.name || "",
+    rating: 0,
+    reviewCount: 0,
+    inStock: Number(row.stock || 0) > 0,
+    stockCount: Number(row.stock || 0),
+    specs: {},
+    tags: [],
+    isDeal: Boolean(
+      row.compare_at_price_dzd && row.compare_at_price_dzd > row.price_dzd,
+    ),
+    isBestSeller: Boolean(row.is_featured),
+  };
 }
 
 export function EdigiyaHome() {
-  const { locale } = useLocale(); const { totalItems } = useCart(); const ar = locale === "ar"
-  const [menuOpen, setMenuOpen] = useState(false); const [departments, setDepartments] = useState<Department[]>([]); const [products, setProducts] = useState<Product[]>([]); const [settings, setSettings] = useState(DEFAULT_STORE_SETTINGS)
-  useEffect(() => { Promise.all([getDepartments(), getProducts({ limit: 18 }), fetchStoreSettings()]).then(([deps, result, storeSettings]) => { setDepartments(Array.isArray(deps) ? deps.slice(0, 6) : []); setProducts((result?.products || []).filter(compatible).map(toProduct).slice(0, 4)); setSettings(storeSettings) }).catch(() => undefined) }, [])
-  const copy = useMemo(() => ar ? { shop: "المتجر", categories: "الفئات", new: "الجديد", support: "المساعدة", hero: "اكتشف عالمك الرقمي.", intro: "منتجات وخدمات رقمية مختارة بعناية، مع تجربة شراء واضحة ودعم إنساني.", cta: "اكتشف المتجر", selected: "مختارات لك", selectedIntro: "ابدأ من العروض المتاحة الآن.", browse: "تصفح الفئات", browseIntro: "اختيارات مرتبة لتصل إلى ما تبحث عنه بسهولة.", story: "أقل ضجيجا. اختيارات أكثر.", storyIntro: "Edigiya يجعل اكتشاف وشراء المنتجات الرقمية أبسط، من أول نظرة إلى ما بعد الطلب.", journey: "بسيط في كل خطوة.", help: "هل تحتاج إلى مساعدة؟", helpIntro: "فريقنا هنا لمساعدتك قبل الشراء وبعده.", talk: "تحدث معنا", empty: "العروض الرقمية قادمة قريبا." } : { shop: "Boutique", categories: "Catégories", new: "Nouveautés", support: "Aide", hero: "Découvrez votre monde digital.", intro: "Des produits et services numériques choisis avec soin, dans une expérience d’achat claire et humaine.", cta: "Découvrir la boutique", selected: "Choisis pour vous", selectedIntro: "Commencez par les offres disponibles maintenant.", browse: "Parcourir les catégories", browseIntro: "Des choix organisés pour trouver plus facilement ce que vous cherchez.", story: "Moins de bruit. Plus de choix.", storyIntro: "Edigiya rend la découverte et l’achat de produits numériques plus simples, du premier regard au suivi de votre commande.", journey: "Simple à chaque étape.", help: "Besoin d’aide ?", helpIntro: "Notre équipe est là avant et après votre achat.", talk: "Parler avec nous", empty: "Les offres digitales arrivent bientôt." }, [ar])
-  const deptName = (d: Department) => ar ? d.name_ar || d.name_fr : d.name_fr || d.name_ar
+  const { locale } = useLocale();
+  const { totalItems } = useCart();
+  const ar = locale === "ar";
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [settings, setSettings] = useState(DEFAULT_STORE_SETTINGS);
+  useEffect(() => {
+    Promise.all([
+      getDepartments(),
+      getProducts({ limit: 18 }),
+      fetchStoreSettings(),
+    ])
+      .then(([deps, result, storeSettings]) => {
+        setDepartments(Array.isArray(deps) ? deps.slice(0, 6) : []);
+        setProducts(
+          (result?.products || [])
+            .filter(compatible)
+            .map(toProduct)
+            .slice(0, 4),
+        );
+        setSettings(storeSettings);
+      })
+      .catch(() => undefined);
+  }, []);
+  const copy = useMemo(
+    () =>
+      ar
+        ? {
+            shop: "المتجر",
+            categories: "الفئات",
+            new: "الجديد",
+            support: "المساعدة",
+            hero: "اكتشف عالمك الرقمي.",
+            intro:
+              "منتجات وخدمات رقمية مختارة بعناية، مع تجربة شراء واضحة ودعم إنساني.",
+            cta: "اكتشف المتجر",
+            selected: "مختارات لك",
+            selectedIntro: "ابدأ من العروض المتاحة الآن.",
+            browse: "تصفح الفئات",
+            browseIntro: "اختيارات مرتبة لتصل إلى ما تبحث عنه بسهولة.",
+            story: "أقل ضجيجا. اختيارات أكثر.",
+            storyIntro:
+              "Edigiya يجعل اكتشاف وشراء المنتجات الرقمية أبسط، من أول نظرة إلى ما بعد الطلب.",
+            journey: "بسيط في كل خطوة.",
+            help: "هل تحتاج إلى مساعدة؟",
+            helpIntro: "فريقنا هنا لمساعدتك قبل الشراء وبعده.",
+            talk: "تحدث معنا",
+            empty: "العروض الرقمية قادمة قريبا.",
+          }
+        : {
+            shop: "Boutique",
+            categories: "Catégories",
+            new: "Nouveautés",
+            support: "Aide",
+            hero: "Découvrez votre monde digital.",
+            intro:
+              "Des produits et services numériques choisis avec soin, dans une expérience d’achat claire et humaine.",
+            cta: "Découvrir la boutique",
+            selected: "Choisis pour vous",
+            selectedIntro: "Commencez par les offres disponibles maintenant.",
+            browse: "Parcourir les catégories",
+            browseIntro:
+              "Des choix organisés pour trouver plus facilement ce que vous cherchez.",
+            story: "Moins de bruit. Plus de choix.",
+            storyIntro:
+              "Edigiya rend la découverte et l’achat de produits numériques plus simples, du premier regard au suivi de votre commande.",
+            journey: "Simple à chaque étape.",
+            help: "Besoin d’aide ?",
+            helpIntro: "Notre équipe est là avant et après votre achat.",
+            talk: "Parler avec nous",
+            empty: "Les offres digitales arrivent bientôt.",
+          },
+    [ar],
+  );
+  const deptName = (d: Department) =>
+    ar ? d.name_ar || d.name_fr : d.name_fr || d.name_ar;
 
-  return <div className="min-h-screen bg-[#f8f9f7] text-[#14235d] dark:bg-[#101932] dark:text-white">
-    <header className="sticky top-0 z-50 bg-[#f8f9f7]/95 backdrop-blur-xl dark:bg-[#101932]/95"><div className="mx-auto flex h-[74px] max-w-7xl items-center justify-between px-5 lg:px-10"><Link href="/" className="relative h-14 w-44 shrink-0" aria-label="Edigiya Store DZ"><Image src="/brand/edigiya-logo-light.svg" alt="Edigiya Store DZ" fill className="object-contain object-left dark:hidden" priority /><Image src="/brand/edigiya-logo-dark.svg" alt="Edigiya Store DZ" fill className="hidden object-contain object-left dark:block" priority /></Link><nav className="hidden items-center gap-8 text-sm font-medium text-[#536078] lg:flex"><Link href="/shop">{copy.shop}</Link><Link href="#categories">{copy.categories}</Link><Link href="/shop?tab=new">{copy.new}</Link><Link href="/support">{copy.support}</Link></nav><div className="flex items-center gap-1"><Link href="/shop" aria-label="Search" className="hidden h-11 w-11 items-center justify-center rounded-xl text-[#536078] hover:bg-[#edf2ed] sm:flex"><Search className="h-5 w-5" /></Link><Link href="/account" aria-label="Account" className="hidden h-11 w-11 items-center justify-center rounded-xl text-[#536078] hover:bg-[#edf2ed] sm:flex"><UserRound className="h-5 w-5" /></Link><Link href="/cart" aria-label="Cart" className="relative flex h-11 items-center gap-2 rounded-xl px-3 text-[#536078] hover:bg-[#edf2ed]"><ShoppingBag className="h-5 w-5" />{totalItems > 0 && <span className="text-xs font-bold">{totalItems}</span>}</Link><button onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen} aria-label="Menu" className="flex h-11 w-11 items-center justify-center rounded-xl text-[#536078] hover:bg-[#edf2ed] lg:hidden">{menuOpen ? <X /> : <Menu />}</button></div></div>{menuOpen && <div className="border-t border-[#dfe6e0] px-5 py-5 lg:hidden dark:border-white/10"><nav className="flex flex-col gap-4 text-sm font-semibold"><Link href="/shop" onClick={() => setMenuOpen(false)}>{copy.shop}</Link><Link href="#categories" onClick={() => setMenuOpen(false)}>{copy.categories}</Link><Link href="/support" onClick={() => setMenuOpen(false)}>{copy.support}</Link><Link href="/account" onClick={() => setMenuOpen(false)}>Compte</Link></nav></div>}</header>
+  return (
+    <div className="min-h-screen bg-[#f8f9f7] text-[#14235d] dark:bg-[#101932] dark:text-white">
+      <header className="sticky top-0 z-50 bg-[#f8f9f7]/95 backdrop-blur-xl dark:bg-[#101932]/95">
+        <div className="mx-auto flex h-[74px] max-w-7xl items-center justify-between px-5 lg:px-10">
+          <Link
+            href="/"
+            className="relative h-14 w-44 shrink-0"
+            aria-label="Edigiya Store DZ"
+          >
+            <Image
+              src="/brand/edigiya-logo-light.svg"
+              alt="Edigiya Store DZ"
+              fill
+              className="object-contain object-left dark:hidden"
+              priority
+            />
+            <Image
+              src="/brand/edigiya-logo-dark.svg"
+              alt="Edigiya Store DZ"
+              fill
+              className="hidden object-contain object-left dark:block"
+              priority
+            />
+          </Link>
+          <nav className="hidden items-center gap-8 text-sm font-medium text-[#536078] lg:flex">
+            <Link href="/shop">{copy.shop}</Link>
+            <Link href="#categories">{copy.categories}</Link>
+            <Link href="/shop?tab=new">{copy.new}</Link>
+            <Link href="/support">{copy.support}</Link>
+          </nav>
+          <div className="flex items-center gap-1">
+            <Link
+              href="/shop"
+              aria-label="Search"
+              className="hidden h-11 w-11 items-center justify-center rounded-xl text-[#536078] hover:bg-[#edf2ed] sm:flex"
+            >
+              <Search className="h-5 w-5" />
+            </Link>
+            <Link
+              href="/account"
+              aria-label="Account"
+              className="hidden h-11 w-11 items-center justify-center rounded-xl text-[#536078] hover:bg-[#edf2ed] sm:flex"
+            >
+              <UserRound className="h-5 w-5" />
+            </Link>
+            <Link
+              href="/cart"
+              aria-label="Cart"
+              className="relative flex h-11 items-center gap-2 rounded-xl px-3 text-[#536078] hover:bg-[#edf2ed]"
+            >
+              <ShoppingBag className="h-5 w-5" />
+              {totalItems > 0 && (
+                <span className="text-xs font-bold">{totalItems}</span>
+              )}
+            </Link>
+            <button
+              onClick={() => setMenuOpen(!menuOpen)}
+              aria-expanded={menuOpen}
+              aria-label="Menu"
+              className="flex h-11 w-11 items-center justify-center rounded-xl text-[#536078] hover:bg-[#edf2ed] lg:hidden"
+            >
+              {menuOpen ? <X /> : <Menu />}
+            </button>
+          </div>
+        </div>
+        {menuOpen && (
+          <div className="border-t border-[#dfe6e0] px-5 py-5 lg:hidden dark:border-white/10">
+            <nav className="flex flex-col gap-4 text-sm font-semibold">
+              <Link href="/shop" onClick={() => setMenuOpen(false)}>
+                {copy.shop}
+              </Link>
+              <Link href="#categories" onClick={() => setMenuOpen(false)}>
+                {copy.categories}
+              </Link>
+              <Link href="/support" onClick={() => setMenuOpen(false)}>
+                {copy.support}
+              </Link>
+              <Link href="/account" onClick={() => setMenuOpen(false)}>
+                Compte
+              </Link>
+            </nav>
+          </div>
+        )}
+      </header>
 
-    <main>
-      <section className="mx-auto grid max-w-7xl gap-7 px-5 pb-16 pt-7 lg:grid-cols-[.78fr_1.22fr] lg:gap-8 lg:px-10 lg:pb-20 lg:pt-8"><div className="flex flex-col justify-center py-4 lg:py-10"><p className="mb-5 text-xs font-bold uppercase tracking-[.18em] text-[#2daa22]">Edigiya Store DZ</p><h1 className="max-w-xl text-[clamp(2.75rem,6vw,5.25rem)] font-bold leading-[.98] tracking-[-.06em]">{copy.hero}</h1><p className="mt-6 max-w-lg text-base leading-7 text-[#536078] sm:text-lg dark:text-[#b8c0d0]">{copy.intro}</p><div className="mt-8 flex flex-wrap gap-3"><Link href="/shop" className="inline-flex h-12 items-center gap-3 rounded-xl bg-[#14235d] px-6 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-[#24366f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2daa22]">{copy.cta}<ArrowRight className="h-4 w-4 rtl:rotate-180" /></Link><Link href="#featured" className="inline-flex h-12 items-center gap-2 rounded-xl px-4 text-sm font-bold text-[#536078] hover:bg-[#edf2ed] dark:text-[#c9d0dc]">{copy.selected}<ChevronDown className="h-4 w-4" /></Link></div></div><div className="relative min-h-[410px] overflow-hidden bg-[#eef4ee] p-5 sm:min-h-[520px] sm:p-8 dark:bg-[#142044]"><div className="absolute inset-0 opacity-30 [background-image:linear-gradient(rgba(20,35,93,.1)_1px,transparent_1px),linear-gradient(90deg,rgba(20,35,93,.1)_1px,transparent_1px)] [background-size:44px_44px]" /><div className="absolute right-8 top-8 text-xs font-bold uppercase tracking-[.2em] text-[#2daa22]">01 / Edigiya</div>{products.length > 0 ? <div className="relative grid h-full min-h-[365px] grid-cols-2 gap-3 pt-10 sm:min-h-[475px] sm:gap-5"><div className="relative row-span-2 overflow-hidden bg-white p-5 dark:bg-white/[.09]"><div className="absolute start-4 top-4 z-10 text-[10px] font-bold uppercase tracking-[.16em] text-[#2daa22]">{copy.selected}</div>{products[0].images[0] ? <Image src={products[0].images[0]} alt={products[0].name[locale]} fill className="object-contain p-8 transition duration-500 hover:scale-105" sizes="50vw" /> : <Image src="/brand/edigiya-mark.svg" alt="" fill className="object-contain p-16 opacity-30" sizes="50vw" />}<div className="absolute bottom-5 start-5 end-5"><p className="line-clamp-1 text-sm font-bold text-[#14235d] dark:text-white">{products[0].name[locale]}</p><p className="mt-1 text-sm font-bold text-[#2daa22]">{formatPrice(products[0].price)}</p></div></div>{products.slice(1, 3).map((product) => <Link key={product.id} href={`/product/${product.slug}`} className="group relative overflow-hidden bg-white p-3 dark:bg-white/[.09]"><div className="absolute bottom-3 start-3 z-10 end-3"><p className="line-clamp-1 text-xs font-bold text-[#14235d] dark:text-white">{product.name[locale]}</p><p className="mt-1 text-xs font-bold text-[#2daa22]">{formatPrice(product.price)}</p></div>{product.images[0] ? <Image src={product.images[0]} alt={product.name[locale]} fill className="object-contain p-5 pb-14 transition duration-500 group-hover:scale-105" sizes="25vw" /> : <Image src="/brand/edigiya-mark.svg" alt="" fill className="object-contain p-10 opacity-25" sizes="25vw" />}</Link>)}</div> : <div className="relative flex min-h-[365px] flex-col justify-between pt-12 sm:min-h-[475px]"><Image src="/brand/edigiya-mark.svg" alt="" width={400} height={400} className="absolute -bottom-10 -right-10 h-[75%] w-[75%] object-contain opacity-20" /><div className="relative max-w-sm text-3xl font-bold leading-tight sm:text-5xl">{copy.selected}<br /><span className="text-[#2daa22]">{copy.empty}</span></div><div className="relative flex items-center gap-3 text-sm text-[#536078] dark:text-[#b8c0d0]"><span className="h-2 w-2 rounded-full bg-[#2daa22]" />{copy.browseIntro}</div></div>}</div></section>
+      <main>
+        <section className="mx-auto grid max-w-7xl gap-7 px-5 pb-16 pt-7 lg:grid-cols-[.78fr_1.22fr] lg:gap-8 lg:px-10 lg:pb-20 lg:pt-8">
+          <div className="flex flex-col justify-center py-4 lg:py-10">
+            <p className="mb-5 text-xs font-bold uppercase tracking-[.18em] text-[#2daa22]">
+              Edigiya Store DZ
+            </p>
+            <h1 className="max-w-xl text-[clamp(2.75rem,6vw,5.25rem)] font-bold leading-[.98] tracking-[-.06em]">
+              {copy.hero}
+            </h1>
+            <p className="mt-6 max-w-lg text-base leading-7 text-[#536078] sm:text-lg dark:text-[#b8c0d0]">
+              {copy.intro}
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link
+                href="/shop"
+                className="inline-flex h-12 items-center gap-3 rounded-xl bg-[#14235d] px-6 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-[#24366f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2daa22]"
+              >
+                {copy.cta}
+                <ArrowRight className="h-4 w-4 rtl:rotate-180" />
+              </Link>
+              <Link
+                href="#featured"
+                className="inline-flex h-12 items-center gap-2 rounded-xl px-4 text-sm font-bold text-[#536078] hover:bg-[#edf2ed] dark:text-[#c9d0dc]"
+              >
+                {copy.selected}
+                <ChevronDown className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
+          <div className="relative min-h-[410px] overflow-hidden bg-[#eef4ee] p-5 sm:min-h-[520px] sm:p-8 dark:bg-[#142044]">
+            <div className="absolute inset-0 opacity-30 [background-image:linear-gradient(rgba(20,35,93,.1)_1px,transparent_1px),linear-gradient(90deg,rgba(20,35,93,.1)_1px,transparent_1px)] [background-size:44px_44px]" />
+            <div className="absolute right-8 top-8 text-xs font-bold uppercase tracking-[.2em] text-[#2daa22]">
+              01 / Edigiya
+            </div>
+            {products.length > 0 ? (
+              <div className="relative grid h-full min-h-[365px] grid-cols-2 gap-3 pt-10 sm:min-h-[475px] sm:gap-5">
+                <Link
+                  href={`/product/${products[0].slug}`}
+                  className="group relative row-span-2 overflow-hidden bg-white p-5 dark:bg-white/[.09]"
+                >
+                  <div className="absolute start-4 top-4 z-10 text-[10px] font-bold uppercase tracking-[.16em] text-[#2daa22]">
+                    {copy.selected}
+                  </div>
+                  {products[0].images[0] ? (
+                    <Image
+                      src={products[0].images[0]}
+                      alt={products[0].name[locale]}
+                      fill
+                      className="store-product-image object-contain p-8 transition duration-500 group-hover:scale-105"
+                      sizes="50vw"
+                    />
+                  ) : (
+                    <Image
+                      src="/brand/edigiya-mark.svg"
+                      alt=""
+                      fill
+                      className="object-contain p-16 opacity-30"
+                      sizes="50vw"
+                    />
+                  )}
+                  <div className="absolute bottom-5 start-5 end-5">
+                    <p className="line-clamp-1 text-sm font-bold text-[#14235d] dark:text-white">
+                      {products[0].name[locale]}
+                    </p>
+                    <p className="mt-1 text-sm font-bold text-[#2daa22]">
+                      {formatPrice(products[0].price)}
+                    </p>
+                  </div>
+                </Link>
+                {products.slice(1, 3).map((product) => (
+                  <Link
+                    key={product.id}
+                    href={`/product/${product.slug}`}
+                    className="group relative overflow-hidden bg-white p-3 dark:bg-white/[.09]"
+                  >
+                    <div className="absolute bottom-3 start-3 z-10 end-3">
+                      <p className="line-clamp-1 text-xs font-bold text-[#14235d] dark:text-white">
+                        {product.name[locale]}
+                      </p>
+                      <p className="mt-1 text-xs font-bold text-[#2daa22]">
+                        {formatPrice(product.price)}
+                      </p>
+                    </div>
+                    {product.images[0] ? (
+                      <Image
+                        src={product.images[0]}
+                        alt={product.name[locale]}
+                        fill
+                        className="store-product-image object-contain p-5 pb-14 transition duration-500 group-hover:scale-105"
+                        sizes="25vw"
+                      />
+                    ) : (
+                      <Image
+                        src="/brand/edigiya-mark.svg"
+                        alt=""
+                        fill
+                        className="object-contain p-10 opacity-25"
+                        sizes="25vw"
+                      />
+                    )}
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="relative flex min-h-[365px] flex-col justify-between pt-12 sm:min-h-[475px]">
+                <Image
+                  src="/brand/edigiya-mark.svg"
+                  alt=""
+                  width={400}
+                  height={400}
+                  className="absolute -bottom-10 -right-10 h-[75%] w-[75%] object-contain opacity-20"
+                />
+                <div className="relative max-w-sm text-3xl font-bold leading-tight sm:text-5xl">
+                  {copy.selected}
+                  <br />
+                  <span className="text-[#2daa22]">{copy.empty}</span>
+                </div>
+                <div className="relative flex items-center gap-3 text-sm text-[#536078] dark:text-[#b8c0d0]">
+                  <span className="h-2 w-2 rounded-full bg-[#2daa22]" />
+                  {copy.browseIntro}
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
 
-      <section id="featured" className="mx-auto max-w-7xl px-5 py-16 lg:px-10 lg:py-20"><div className="flex items-end justify-between gap-4"><div><p className="mb-2 text-xs font-bold uppercase tracking-[.18em] text-[#2daa22]">Edigiya</p><h2 className="text-3xl font-bold tracking-[-.045em] sm:text-4xl">{copy.selected}</h2><p className="mt-2 text-[#536078] dark:text-[#b8c0d0]">{copy.selectedIntro}</p></div><Link href="/shop" className="hidden items-center gap-2 text-sm font-bold text-[#2daa22] sm:flex">{copy.shop}<ArrowRight className="h-4 w-4 rtl:rotate-180" /></Link></div>{products.length > 0 ? <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{products.map((product, i) => <Link key={product.id} href={`/product/${product.slug}`} className={`group relative overflow-hidden border border-[#dfe6e0] bg-white p-3 transition hover:-translate-y-1 hover:border-[#2daa22]/70 dark:border-white/10 dark:bg-white/[.06] ${i === 0 ? "lg:col-span-2 lg:row-span-2" : ""}`}><div className={`relative overflow-hidden bg-[#f0f4ef] dark:bg-white/[.06] ${i === 0 ? "aspect-[1.25]" : "aspect-square"}`}>{product.images[0] ? <Image src={product.images[0]} alt={product.name[locale]} fill className="object-contain p-6 transition duration-500 group-hover:scale-105" sizes="(max-width: 1024px) 50vw, 25vw" /> : <Image src="/brand/edigiya-mark.svg" alt="" fill className="object-contain p-10 opacity-30" sizes="25vw" />}</div><div className="px-2 pb-2 pt-4"><p className="text-xs text-[#7a8496]">{product.brand || "Edigiya"}</p><h3 className="mt-1 line-clamp-2 font-semibold">{product.name[locale]}</h3><p className="mt-3 font-bold">{formatPrice(product.price)}</p></div></Link>)}</div> : <div className="mt-8 border border-dashed border-[#cdd9cf] bg-[#eef4ee] p-8 dark:border-white/15 dark:bg-white/[.04]"><p className="font-semibold">{copy.empty}</p><Link href="/support" className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-[#2daa22]">{copy.support}<ArrowRight className="h-4 w-4 rtl:rotate-180" /></Link></div>}</section>
+        <section
+          id="featured"
+          className="mx-auto max-w-7xl px-5 py-16 lg:px-10 lg:py-20"
+        >
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <p className="mb-2 text-xs font-bold uppercase tracking-[.18em] text-[#2daa22]">
+                Edigiya
+              </p>
+              <h2 className="text-3xl font-bold tracking-[-.045em] sm:text-4xl">
+                {copy.selected}
+              </h2>
+              <p className="mt-2 text-[#536078] dark:text-[#b8c0d0]">
+                {copy.selectedIntro}
+              </p>
+            </div>
+            <Link
+              href="/shop"
+              className="hidden items-center gap-2 text-sm font-bold text-[#2daa22] sm:flex"
+            >
+              {copy.shop}
+              <ArrowRight className="h-4 w-4 rtl:rotate-180" />
+            </Link>
+          </div>
+          {products.length > 0 ? (
+            <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+              {products.map((product, i) => (
+                <Link
+                  key={product.id}
+                  href={`/product/${product.slug}`}
+                  className={`group relative overflow-hidden rounded-2xl border border-[#dfe6e0] bg-white p-2 transition hover:-translate-y-1 hover:border-[#2daa22]/70 hover:shadow-[0_18px_40px_rgba(20,35,93,0.10)] sm:p-3 dark:border-white/10 dark:bg-white/[.06] ${i === 0 ? "lg:col-span-2 lg:row-span-2" : ""}`}
+                >
+                  <div
+                    className={`relative overflow-hidden rounded-xl bg-[#f0f4ef] dark:bg-white/[.06] ${i === 0 ? "aspect-square lg:aspect-[1.25]" : "aspect-square"}`}
+                  >
+                    {product.images[0] ? (
+                      <Image
+                        src={product.images[0]}
+                        alt={product.name[locale]}
+                        fill
+                        className="store-product-image object-contain p-3 transition duration-500 group-hover:scale-105 sm:p-6"
+                        sizes="(max-width: 1024px) 50vw, 25vw"
+                      />
+                    ) : (
+                      <Image
+                        src="/brand/edigiya-mark.svg"
+                        alt=""
+                        fill
+                        className="object-contain p-10 opacity-30"
+                        sizes="25vw"
+                      />
+                    )}
+                  </div>
+                  <div className="px-1 pb-1 pt-3 sm:px-2 sm:pb-2 sm:pt-4">
+                    <p className="truncate text-[10px] text-[#7a8496] sm:text-xs">
+                      {product.brand || "Edigiya"}
+                    </p>
+                    <h3 className="mt-1 line-clamp-2 min-h-9 text-xs font-semibold leading-4 sm:text-sm sm:leading-5">
+                      {product.name[locale]}
+                    </h3>
+                    <p className="mt-2 text-sm font-bold sm:mt-3 sm:text-base">
+                      {formatPrice(product.price)}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-8 border border-dashed border-[#cdd9cf] bg-[#eef4ee] p-8 dark:border-white/15 dark:bg-white/[.04]">
+              <p className="font-semibold">{copy.empty}</p>
+              <Link
+                href="/support"
+                className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-[#2daa22]"
+              >
+                {copy.support}
+                <ArrowRight className="h-4 w-4 rtl:rotate-180" />
+              </Link>
+            </div>
+          )}
+        </section>
 
-      <section id="categories" className="bg-[#eef4ee] px-5 py-16 dark:bg-[#142044] lg:px-10 lg:py-20"><div className="mx-auto max-w-7xl"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="mb-2 text-xs font-bold uppercase tracking-[.18em] text-[#2daa22]">Collections</p><h2 className="text-3xl font-bold tracking-[-.045em] sm:text-4xl">{copy.browse}</h2><p className="mt-2 max-w-lg text-[#536078] dark:text-[#b8c0d0]">{copy.browseIntro}</p></div><Link href="/shop" className="text-sm font-bold text-[#2daa22]">{copy.shop} <ArrowRight className="inline h-4 w-4 rtl:rotate-180" /></Link></div>{departments.length > 0 ? <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{departments.map((department, i) => <Link key={department.id} href={`/department/${department.slug}`} className={`group relative flex min-h-[155px] items-end overflow-hidden bg-white p-5 dark:bg-white/[.08] ${i === 0 ? "lg:col-span-2 lg:min-h-[210px]" : ""}`}>{department.image_url && <Image src={department.image_url} alt="" fill className="object-cover opacity-35 transition duration-500 group-hover:scale-105" sizes="(max-width: 1024px) 100vw, 50vw" />}<div className="relative flex w-full items-end justify-between"><h3 className="text-xl font-bold">{deptName(department)}</h3><ArrowRight className="h-5 w-5 text-[#2daa22] transition group-hover:translate-x-1 rtl:rotate-180" /></div></Link>)}</div> : <p className="mt-8 text-sm text-[#536078] dark:text-[#b8c0d0]">{copy.empty}</p>}</div></section>
+        <section
+          id="categories"
+          className="bg-[#eef4ee] px-5 py-16 dark:bg-[#142044] lg:px-10 lg:py-20"
+        >
+          <div className="mx-auto max-w-7xl">
+            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+              <div>
+                <p className="mb-2 text-xs font-bold uppercase tracking-[.18em] text-[#2daa22]">
+                  Collections
+                </p>
+                <h2 className="text-3xl font-bold tracking-[-.045em] sm:text-4xl">
+                  {copy.browse}
+                </h2>
+                <p className="mt-2 max-w-lg text-[#536078] dark:text-[#b8c0d0]">
+                  {copy.browseIntro}
+                </p>
+              </div>
+              <Link href="/shop" className="text-sm font-bold text-[#2daa22]">
+                {copy.shop}{" "}
+                <ArrowRight className="inline h-4 w-4 rtl:rotate-180" />
+              </Link>
+            </div>
+            {departments.length > 0 ? (
+              <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {departments.map((department, i) => (
+                  <Link
+                    key={department.id}
+                    href={`/department/${department.slug}`}
+                    className={`group relative flex min-h-[155px] items-end overflow-hidden bg-white p-5 dark:bg-white/[.08] ${i === 0 ? "lg:col-span-2 lg:min-h-[210px]" : ""}`}
+                  >
+                    {department.image_url && (
+                      <Image
+                        src={department.image_url}
+                        alt=""
+                        fill
+                        className="object-cover opacity-35 transition duration-500 group-hover:scale-105"
+                        sizes="(max-width: 1024px) 100vw, 50vw"
+                      />
+                    )}
+                    <div className="relative flex w-full items-end justify-between">
+                      <h3 className="text-xl font-bold">
+                        {deptName(department)}
+                      </h3>
+                      <ArrowRight className="h-5 w-5 text-[#2daa22] transition group-hover:translate-x-1 rtl:rotate-180" />
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-8 text-sm text-[#536078] dark:text-[#b8c0d0]">
+                {copy.empty}
+              </p>
+            )}
+          </div>
+        </section>
 
-      <section className="mx-auto grid max-w-7xl gap-10 px-5 py-16 lg:grid-cols-[.75fr_1.25fr] lg:items-center lg:px-10 lg:py-24"><div><p className="mb-2 text-xs font-bold uppercase tracking-[.18em] text-[#2daa22]">Edigiya</p><h2 className="text-3xl font-bold leading-tight tracking-[-.045em] sm:text-5xl">{copy.story}</h2><p className="mt-5 max-w-md leading-7 text-[#536078] dark:text-[#b8c0d0]">{copy.storyIntro}</p></div><div className="relative bg-[#14235d] px-6 py-9 text-white sm:px-10"><Image src="/brand/edigiya-mark-light.svg" alt="" width={180} height={180} className="absolute bottom-0 end-0 h-36 w-36 object-contain opacity-20" /><h3 className="relative text-xl font-bold">{copy.journey}</h3><div className="relative mt-8 grid grid-cols-2 gap-y-8 sm:grid-cols-4 sm:gap-4"><div><span className="text-xs font-bold text-[#80d773]">01</span><p className="mt-2 text-sm font-semibold">Découvrir</p></div><div><span className="text-xs font-bold text-[#80d773]">02</span><p className="mt-2 text-sm font-semibold">Choisir</p></div><div><span className="text-xs font-bold text-[#80d773]">03</span><p className="mt-2 text-sm font-semibold">Confirmer</p></div><div><span className="text-xs font-bold text-[#80d773]">04</span><p className="mt-2 text-sm font-semibold">Recevoir</p></div></div></div></section>
+        <section className="mx-auto grid max-w-7xl gap-10 px-5 py-16 lg:grid-cols-[.75fr_1.25fr] lg:items-center lg:px-10 lg:py-24">
+          <div>
+            <p className="mb-2 text-xs font-bold uppercase tracking-[.18em] text-[#2daa22]">
+              Edigiya
+            </p>
+            <h2 className="text-3xl font-bold leading-tight tracking-[-.045em] sm:text-5xl">
+              {copy.story}
+            </h2>
+            <p className="mt-5 max-w-md leading-7 text-[#536078] dark:text-[#b8c0d0]">
+              {copy.storyIntro}
+            </p>
+          </div>
+          <div className="relative bg-[#14235d] px-6 py-9 text-white sm:px-10">
+            <Image
+              src="/brand/edigiya-mark-light.svg"
+              alt=""
+              width={180}
+              height={180}
+              className="absolute bottom-0 end-0 h-36 w-36 object-contain opacity-20"
+            />
+            <h3 className="relative text-xl font-bold">{copy.journey}</h3>
+            <div className="relative mt-8 grid grid-cols-2 gap-y-8 sm:grid-cols-4 sm:gap-4">
+              <div>
+                <span className="text-xs font-bold text-[#80d773]">01</span>
+                <p className="mt-2 text-sm font-semibold">Découvrir</p>
+              </div>
+              <div>
+                <span className="text-xs font-bold text-[#80d773]">02</span>
+                <p className="mt-2 text-sm font-semibold">Choisir</p>
+              </div>
+              <div>
+                <span className="text-xs font-bold text-[#80d773]">03</span>
+                <p className="mt-2 text-sm font-semibold">Confirmer</p>
+              </div>
+              <div>
+                <span className="text-xs font-bold text-[#80d773]">04</span>
+                <p className="mt-2 text-sm font-semibold">Recevoir</p>
+              </div>
+            </div>
+          </div>
+        </section>
 
-      <section className="mx-5 mb-16 overflow-hidden border border-[#b7d7b6] bg-[#e7f4e5] px-6 py-10 sm:px-10 lg:mx-auto lg:mb-24 lg:max-w-7xl"><div className="flex flex-col gap-7 sm:flex-row sm:items-center sm:justify-between"><div><p className="mb-2 text-xs font-bold uppercase tracking-[.18em] text-[#2daa22]">Support</p><h2 className="text-3xl font-bold tracking-[-.04em]">{copy.help}</h2><p className="mt-2 max-w-lg text-sm leading-6 text-[#536078]">{copy.helpIntro}</p></div><a href={toWhatsAppUrl(settings.whatsapp)} target="_blank" rel="noopener noreferrer" className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-[#14235d] px-6 text-sm font-bold text-white transition hover:bg-[#24366f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2daa22]"><MessageCircle className="h-4 w-4" />{copy.talk}</a></div></section>
-    </main>
-    <footer className="border-t border-[#dfe6e0] px-5 py-9 dark:border-white/10 lg:px-10"><div className="mx-auto flex max-w-7xl flex-col gap-5 sm:flex-row sm:items-center sm:justify-between"><Link href="/" className="relative h-12 w-40"><Image src="/brand/edigiya-logo-light.svg" alt="Edigiya Store DZ" fill className="object-contain object-left dark:hidden" /><Image src="/brand/edigiya-logo-dark.svg" alt="Edigiya Store DZ" fill className="hidden object-contain object-left dark:block" /></Link><div className="flex flex-wrap gap-x-6 gap-y-3 text-sm text-[#536078] dark:text-[#b8c0d0]"><Link href="/shop">{copy.shop}</Link><Link href="/account">Compte</Link><Link href="/support">{copy.support}</Link><a href={`mailto:${settings.contactEmail}`}>{settings.contactEmail}</a></div></div></footer>
-  </div>
+        <section className="mx-5 mb-16 overflow-hidden border border-[#b7d7b6] bg-[#e7f4e5] px-6 py-10 sm:px-10 lg:mx-auto lg:mb-24 lg:max-w-7xl">
+          <div className="flex flex-col gap-7 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="mb-2 text-xs font-bold uppercase tracking-[.18em] text-[#2daa22]">
+                Support
+              </p>
+              <h2 className="text-3xl font-bold tracking-[-.04em]">
+                {copy.help}
+              </h2>
+              <p className="mt-2 max-w-lg text-sm leading-6 text-[#536078]">
+                {copy.helpIntro}
+              </p>
+            </div>
+            <a
+              href={toWhatsAppUrl(settings.whatsapp)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-[#14235d] px-6 text-sm font-bold text-white transition hover:bg-[#24366f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2daa22]"
+            >
+              <MessageCircle className="h-4 w-4" />
+              {copy.talk}
+            </a>
+          </div>
+        </section>
+      </main>
+      <footer className="border-t border-[#dfe6e0] px-5 py-9 dark:border-white/10 lg:px-10">
+        <div className="mx-auto flex max-w-7xl flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <Link href="/" className="relative h-12 w-40">
+            <Image
+              src="/brand/edigiya-logo-light.svg"
+              alt="Edigiya Store DZ"
+              fill
+              className="object-contain object-left dark:hidden"
+            />
+            <Image
+              src="/brand/edigiya-logo-dark.svg"
+              alt="Edigiya Store DZ"
+              fill
+              className="hidden object-contain object-left dark:block"
+            />
+          </Link>
+          <div className="flex flex-wrap gap-x-6 gap-y-3 text-sm text-[#536078] dark:text-[#b8c0d0]">
+            <Link href="/shop">{copy.shop}</Link>
+            <Link href="/account">Compte</Link>
+            <Link href="/support">{copy.support}</Link>
+            <a href={`mailto:${settings.contactEmail}`}>
+              {settings.contactEmail}
+            </a>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
 }

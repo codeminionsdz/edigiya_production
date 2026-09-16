@@ -1,21 +1,161 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { ChevronDown, Mail, MessageCircle, Phone, Send } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import { useLocale } from "@/lib/locale-context"
-import { DEFAULT_STORE_SETTINGS, fetchStoreSettings, loadStoreSettings, toTelUrl, toWhatsAppUrl } from "@/lib/store-settings"
-
-const faqs = [
-  { q: { fr: "Comment suivre ma commande ?", ar: "كيف أتابع طلبي؟" }, a: { fr: "Connectez-vous à votre compte puis ouvrez la section Commandes. Vous y retrouverez la référence et l’état réel de chaque commande.", ar: "سجل الدخول إلى حسابك ثم افتح قسم الطلبات لمعرفة المرجع والحالة الحالية." } },
-  { q: { fr: "Quels modes de paiement sont disponibles ?", ar: "ما هي طرق الدفع المتاحة؟" }, a: { fr: "Le checkout propose les méthodes actuellement configurées : paiement à la réception, CIB, Edahabia et virement bancaire.", ar: "تتوفر طرق الدفع المهيأة حالياً: الدفع عند الاستلام و CIB والذهبية والتحويل البنكي." } },
-  { q: { fr: "Comment vous contacter au sujet d’une commande ?", ar: "كيف أتواصل معكم بخصوص طلب؟" }, a: { fr: "Indiquez votre référence de commande et contactez-nous via WhatsApp, téléphone ou email. Notre équipe pourra vous répondre plus précisément.", ar: "أرسل رقم طلبك وتواصل معنا عبر واتساب أو الهاتف أو البريد الإلكتروني لمساعدتك بشكل أدق." } },
-]
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import {
+  ArrowRight,
+  Clock3,
+  Headphones,
+  Mail,
+  MessageCircle,
+  Phone,
+} from "lucide-react";
+import {
+  DEFAULT_STORE_SETTINGS,
+  fetchStoreSettings,
+  loadStoreSettings,
+  toWhatsAppUrl,
+} from "@/lib/store-settings";
 
 export default function SupportPage() {
-  const { locale } = useLocale(); const isArabic = locale === "ar"; const [settings, setSettings] = useState(DEFAULT_STORE_SETTINGS)
-  useEffect(() => { let active = true; fetchStoreSettings().then((value) => { if (active) setSettings(value) }).catch(() => { if (active) setSettings(loadStoreSettings()) }); return () => { active = false } }, [])
-  const contacts = [{ icon: MessageCircle, label: "WhatsApp", value: settings.whatsapp, href: toWhatsAppUrl(settings.whatsapp) }, { icon: Phone, label: isArabic ? "الهاتف" : "Téléphone", value: settings.phonePrimary, href: toTelUrl(settings.phonePrimary) }, { icon: Mail, label: "Email", value: settings.contactEmail, href: `mailto:${settings.contactEmail}` }]
-  return <main dir={isArabic ? "rtl" : "ltr"} className="mx-auto max-w-[1100px] px-5 py-10 sm:px-8 sm:py-14 lg:px-12 lg:py-16"><header className="max-w-2xl"><p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-primary">Edigiya / {isArabic ? "المساعدة" : "Support"}</p><h1 className="mt-4 font-heading text-4xl font-semibold tracking-tight sm:text-5xl">{isArabic ? "نحن هنا لمساعدتك." : "Nous sommes là pour vous aider."}</h1><p className="mt-5 text-base leading-7 text-muted-foreground">{isArabic ? "سؤال حول منتج أو طلب؟ تواصل معنا بالطريقة التي تناسبك." : "Une question sur un produit ou une commande ? Choisissez le canal qui vous convient."}</p></header><div className="mt-12 grid gap-4 sm:grid-cols-3">{contacts.map(({ icon: Icon, label, value, href }) => <a key={label} href={href} target="_blank" rel="noopener noreferrer" className="group border border-border bg-card p-5 transition-colors hover:border-primary"><Icon className="h-5 w-5 text-primary" /><p className="mt-8 text-sm font-semibold">{label}</p><p className="mt-1 truncate text-xs text-muted-foreground">{value}</p></a>)}</div><div className="mt-16 grid gap-12 lg:grid-cols-[0.7fr_1.3fr]"><div><p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">Questions fréquentes</p><h2 className="mt-3 font-heading text-2xl font-semibold">{isArabic ? "إجابات واضحة." : "Des réponses claires."}</h2></div><Accordion type="single" collapsible className="border-y border-border">{faqs.map((faq, index) => <AccordionItem key={faq.q.fr} value={`faq-${index}`}><AccordionTrigger className="py-5 text-start text-sm font-medium hover:no-underline">{faq.q[locale]}</AccordionTrigger><AccordionContent className="pb-5 text-sm leading-7 text-muted-foreground">{faq.a[locale]}</AccordionContent></AccordionItem>)}</Accordion></div><div className="mt-16 flex flex-col items-start justify-between gap-6 border-t border-border pt-8 sm:flex-row sm:items-center"><div><p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">{isArabic ? "تحتاج إلى مساعدة؟" : "Besoin d’aide ?"}</p><h2 className="mt-2 font-heading text-xl font-semibold">{isArabic ? "تحدث مع فريق Edigiya." : "Parlez avec l’équipe Edigiya."}</h2></div><a href={toWhatsAppUrl(settings.whatsapp)} target="_blank" rel="noopener noreferrer"><Button className="gap-2"><MessageCircle className="h-4 w-4" />{isArabic ? "التحدث عبر واتساب" : "Parler sur WhatsApp"}<Send className="h-3.5 w-3.5" /></Button></a></div></main>
+  const [settings, setSettings] = useState(DEFAULT_STORE_SETTINGS);
+
+  useEffect(() => {
+    let active = true;
+
+    fetchStoreSettings()
+      .then((next) => {
+        if (active) setSettings(next);
+      })
+      .catch(() => {
+        if (active) setSettings(loadStoreSettings());
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const whatsappHref = toWhatsAppUrl(settings.whatsapp);
+
+  return (
+    <main className="bg-[#f8f9f7] text-[#14235d] dark:bg-[#101932] dark:text-white">
+      <section className="mx-auto max-w-6xl px-5 py-12 sm:px-8 lg:px-10 lg:py-20">
+        <div className="mb-10 flex items-center gap-3 text-[#2daa22]">
+          <Headphones className="h-6 w-6" />
+          <p className="text-xs font-bold uppercase tracking-[0.2em]">Support</p>
+        </div>
+
+        <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
+          <div>
+            <h1 className="text-4xl font-black tracking-[-0.06em] sm:text-5xl">
+              Besoin d’aide ?
+            </h1>
+            <p className="mt-5 max-w-xl text-base leading-8 text-[#536078] dark:text-[#b8c0d0]">
+              Notre équipe est à votre disposition pour vous aider avant, pendant et
+              après votre achat. Choisissez le canal de contact qui vous convient le
+              mieux.
+            </p>
+
+            <div className="mt-8 flex flex-wrap gap-4">
+              <a
+                href={whatsappHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-xl bg-[#14235d] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#24366f]"
+              >
+                <MessageCircle className="h-4 w-4" />
+                Parler avec nous
+              </a>
+              <Link
+                href="/contact"
+                className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6e0] bg-white px-5 py-3 text-sm font-semibold text-[#14235d] transition hover:border-[#2daa22] hover:text-[#2daa22] dark:border-white/10 dark:bg-white/5"
+              >
+                Envoyer un message
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-[#dfe6e0] bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
+            <h2 className="text-xl font-bold">Contact rapide</h2>
+            <div className="mt-6 space-y-4">
+              {settings.whatsapp && (
+                <a
+                  href={whatsappHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 rounded-xl border border-[#eaf0ea] p-3 transition hover:border-[#2daa22]"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#e7f4e5] text-[#2daa22]">
+                    <MessageCircle className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#2daa22]">
+                      WhatsApp
+                    </p>
+                    <p className="mt-1 text-sm font-medium text-[#14235d] dark:text-white">
+                      {settings.whatsapp}
+                    </p>
+                  </div>
+                </a>
+              )}
+
+              {settings.contactEmail && (
+                <a
+                  href={`mailto:${settings.contactEmail}`}
+                  className="flex items-center gap-3 rounded-xl border border-[#eaf0ea] p-3 transition hover:border-[#2daa22]"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#e7f4e5] text-[#2daa22]">
+                    <Mail className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#2daa22]">
+                      Email
+                    </p>
+                    <p className="mt-1 text-sm font-medium text-[#14235d] dark:text-white">
+                      {settings.contactEmail}
+                    </p>
+                  </div>
+                </a>
+              )}
+
+              {settings.phonePrimary && (
+                <a
+                  href={`tel:${settings.phonePrimary}`}
+                  className="flex items-center gap-3 rounded-xl border border-[#eaf0ea] p-3 transition hover:border-[#2daa22]"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#e7f4e5] text-[#2daa22]">
+                    <Phone className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#2daa22]">
+                      Téléphone
+                    </p>
+                    <p className="mt-1 text-sm font-medium text-[#14235d] dark:text-white">
+                      {settings.phonePrimary}
+                    </p>
+                  </div>
+                </a>
+              )}
+
+              <div className="flex items-center gap-3 rounded-xl border border-[#eaf0ea] p-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#e7f4e5] text-[#2daa22]">
+                  <Clock3 className="h-5 w-5" />
+                </span>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#2daa22]">
+                    Horaires
+                  </p>
+                  <p className="mt-1 text-sm font-medium text-[#14235d] dark:text-white">
+                    {settings.workingHours}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  );
 }

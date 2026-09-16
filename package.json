@@ -6,7 +6,11 @@
     "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "seed:catalog": "node --experimental-strip-types scripts/seed-edigiya-catalog.ts",
+    "validate:catalog": "node --experimental-strip-types scripts/validate-edigiya-catalog.ts",
+    "format": "prettier --write app/admin/navbar/page.tsx app/admin/navbar/products/page.tsx app/admin/products/product-editor.tsx \"app/(store)/product/[slug]/client.tsx\" \"app/(store)/checkout/page.tsx\" \"app/(store)/checkout/actions.ts\" components/store/payment-experience.tsx components/store/pricing-selector.tsx nutrition-erp/src/App.tsx nutrition-erp/src/services/cashService.ts nutrition-erp/src/services/purchaseService.ts nutrition-erp/src/services/salesService.ts nutrition-erp/src/services/stockService.ts lib/data.ts lib/cart-store.tsx lib/digital-email-worker.ts lib/repositories.ts app/admin/actions.ts scripts/seed-edigiya-catalog.ts scripts/validate-edigiya-catalog.ts",
+    "format:check": "prettier --check app/admin/navbar/page.tsx app/admin/navbar/products/page.tsx app/admin/products/product-editor.tsx \"app/(store)/product/[slug]/client.tsx\" \"app/(store)/checkout/page.tsx\" \"app/(store)/checkout/actions.ts\" components/store/payment-experience.tsx components/store/pricing-selector.tsx nutrition-erp/src/App.tsx nutrition-erp/src/services/cashService.ts nutrition-erp/src/services/purchaseService.ts nutrition-erp/src/services/salesService.ts nutrition-erp/src/services/stockService.ts lib/data.ts lib/cart-store.tsx lib/digital-email-worker.ts lib/repositories.ts app/admin/actions.ts scripts/seed-edigiya-catalog.ts scripts/validate-edigiya-catalog.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -71,6 +75,8 @@
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
     "postcss": "^8.5",
+    "prettier": "^3.9.6",
+    "supabase": "^2.116.0",
     "tailwindcss": "^3.4.17",
     "typescript": "5.7.3"
   },

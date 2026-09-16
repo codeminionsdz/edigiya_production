@@ -3,34 +3,41 @@
  * Manages stock levels, FIFO batching, and inventory adjustments
  */
 
-import { createClient } from '@supabase/supabase-js';
-import { StockLevel, StockBatch, ApiResponse, CreateStockMovementInput } from '../types';
-import mockSupabase from '../lib/mockDatabase';
+import { createClient } from "@supabase/supabase-js";
+import {
+  StockLevel,
+  StockBatch,
+  ApiResponse,
+  CreateStockMovementInput,
+} from "../types";
+import mockSupabase from "../lib/mockDatabase";
 
 // Use mock database if credentials are placeholders (development mode)
-const isDevMode = 
-  process.env.VITE_SUPABASE_URL?.includes('your-project') ||
-  process.env.VITE_SUPABASE_ANON_KEY?.includes('your-anon-key');
+const isDevMode =
+  process.env.VITE_SUPABASE_URL?.includes("your-project") ||
+  process.env.VITE_SUPABASE_ANON_KEY?.includes("your-anon-key");
 
-const supabase = isDevMode 
+const supabase = isDevMode
   ? (mockSupabase as any)
   : createClient(
-      process.env.VITE_SUPABASE_URL || '',
-      process.env.VITE_SUPABASE_ANON_KEY || ''
+      process.env.VITE_SUPABASE_URL || "",
+      process.env.VITE_SUPABASE_ANON_KEY || "",
     );
 
 /**
  * Get current stock level for a product
  */
-export async function getStockLevel(productId: number): Promise<ApiResponse<StockLevel>> {
+export async function getStockLevel(
+  productId: number,
+): Promise<ApiResponse<StockLevel>> {
   try {
     const { data: stockLevel, error } = await supabase
-      .from('stock_levels')
-      .select('*')
-      .eq('product_id', productId)
+      .from("stock_levels")
+      .select("*")
+      .eq("product_id", productId)
       .single();
 
-    if (error && error.code !== 'PGRST116') {
+    if (error && error.code !== "PGRST116") {
       // PGRST116 = not found, which is OK
       return {
         success: false,
@@ -49,7 +56,7 @@ export async function getStockLevel(productId: number): Promise<ApiResponse<Stoc
   } catch (error) {
     return {
       success: false,
-      error: `Error getting stock level: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      error: `Error getting stock level: ${error instanceof Error ? error.message : "Unknown error"}`,
     };
   }
 }
@@ -57,14 +64,16 @@ export async function getStockLevel(productId: number): Promise<ApiResponse<Stoc
 /**
  * Get all available batches for a product (FIFO order)
  */
-export async function getProductBatches(productId: number): Promise<ApiResponse<StockBatch[]>> {
+export async function getProductBatches(
+  productId: number,
+): Promise<ApiResponse<StockBatch[]>> {
   try {
     const { data: batches, error } = await supabase
-      .from('stock_batches')
-      .select('*')
-      .eq('product_id', productId)
-      .gt('quantity_available', 0)
-      .order('received_date', { ascending: true }); // FIFO: oldest first
+      .from("stock_batches")
+      .select("*")
+      .eq("product_id", productId)
+      .gt("quantity_available", 0)
+      .order("received_date", { ascending: true }); // FIFO: oldest first
 
     if (error) {
       return {
@@ -80,7 +89,7 @@ export async function getProductBatches(productId: number): Promise<ApiResponse<
   } catch (error) {
     return {
       success: false,
-      error: `Error getting batches: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      error: `Error getting batches: ${error instanceof Error ? error.message : "Unknown error"}`,
     };
   }
 }
@@ -92,16 +101,16 @@ export async function recordStockAdjustment(
   productId: number,
   quantity: number,
   reason: string,
-  notes?: string
+  notes?: string,
 ): Promise<ApiResponse<{ success: boolean; message: string }>> {
   try {
     // Get batches for this product to deduct from FIFO
     const { data: batches, error: batchError } = await supabase
-      .from('stock_batches')
-      .select('*')
-      .eq('product_id', productId)
-      .gt('quantity_available', 0)
-      .order('received_date', { ascending: true });
+      .from("stock_batches")
+      .select("*")
+      .eq("product_id", productId)
+      .gt("quantity_available", 0)
+      .order("received_date", { ascending: true });
 
     if (batchError || !batches || batches.length === 0) {
       return {
@@ -117,12 +126,17 @@ export async function recordStockAdjustment(
     for (const batch of batches) {
       if (remainingQuantity <= 0) break;
 
-      const quantityToAdjust = Math.min(batch.quantity_available, remainingQuantity);
+      const quantityToAdjust = Math.min(
+        batch.quantity_available,
+        remainingQuantity,
+      );
 
       const { error: updateError } = await supabase
-        .from('stock_batches')
-        .update({ quantity_available: batch.quantity_available - quantityToAdjust })
-        .eq('id', batch.id);
+        .from("stock_batches")
+        .update({
+          quantity_available: batch.quantity_available - quantityToAdjust,
+        })
+        .eq("id", batch.id);
 
       if (updateError) {
         return {
@@ -149,14 +163,14 @@ export async function recordStockAdjustment(
     // Record stock movements
     for (const adj of adjustedBatches) {
       const { error: movementError } = await supabase
-        .from('stock_movements')
+        .from("stock_movements")
         .insert({
           product_id: productId,
           batch_id: adj.batch_id,
-          movement_type: 'adjustment',
+          movement_type: "adjustment",
           quantity: adj.quantity,
-          reference_type: 'adjustment',
-          notes: `${reason}${notes ? ' - ' + notes : ''}`,
+          reference_type: "adjustment",
+          notes: `${reason}${notes ? " - " + notes : ""}`,
           created_at: new Date().toISOString(),
         });
 
@@ -178,7 +192,7 @@ export async function recordStockAdjustment(
   } catch (error) {
     return {
       success: false,
-      error: `Error recording adjustment: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      error: `Error recording adjustment: ${error instanceof Error ? error.message : "Unknown error"}`,
     };
   }
 }
@@ -190,22 +204,22 @@ export async function getStockHistory(
   productId: number,
   startDate?: string,
   endDate?: string,
-  limit: number = 100
+  limit: number = 100,
 ) {
   try {
     let query = supabase
-      .from('stock_movements')
-      .select('*')
-      .eq('product_id', productId)
-      .order('created_at', { ascending: false })
+      .from("stock_movements")
+      .select("*")
+      .eq("product_id", productId)
+      .order("created_at", { ascending: false })
       .limit(limit);
 
     if (startDate) {
-      query = query.gte('created_at', `${startDate}T00:00:00`);
+      query = query.gte("created_at", `${startDate}T00:00:00`);
     }
 
     if (endDate) {
-      query = query.lte('created_at', `${endDate}T23:59:59`);
+      query = query.lte("created_at", `${endDate}T23:59:59`);
     }
 
     const { data: movements, error } = await query;
@@ -228,7 +242,7 @@ export async function getStockHistory(
   } catch (error) {
     return {
       success: false,
-      error: `Error getting stock history: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      error: `Error getting stock history: ${error instanceof Error ? error.message : "Unknown error"}`,
     };
   }
 }
@@ -239,9 +253,9 @@ export async function getStockHistory(
 export async function getLowStockProducts(minThreshold: number = 10) {
   try {
     const { data: lowStockProducts, error } = await supabase
-      .from('stock_levels')
-      .select('product_id, total_quantity')
-      .lt('total_quantity', minThreshold);
+      .from("stock_levels")
+      .select("product_id, total_quantity")
+      .lt("total_quantity", minThreshold);
 
     if (error) {
       return {
@@ -261,7 +275,7 @@ export async function getLowStockProducts(minThreshold: number = 10) {
   } catch (error) {
     return {
       success: false,
-      error: `Error getting low stock: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      error: `Error getting low stock: ${error instanceof Error ? error.message : "Unknown error"}`,
     };
   }
 }
@@ -272,9 +286,9 @@ export async function getLowStockProducts(minThreshold: number = 10) {
 export async function getStockValue() {
   try {
     const { data: batches, error } = await supabase
-      .from('stock_batches')
-      .select('quantity_available, unit_cost')
-      .gt('quantity_available', 0);
+      .from("stock_batches")
+      .select("quantity_available, unit_cost")
+      .gt("quantity_available", 0);
 
     if (error) {
       return {
@@ -283,8 +297,17 @@ export async function getStockValue() {
       };
     }
 
-    const totalValue = batches?.reduce((sum, b) => sum + b.quantity_available * b.unit_cost, 0) || 0;
-    const totalUnits = batches?.reduce((sum, b) => sum + b.quantity_available, 0) || 0;
+    const totalValue =
+      batches?.reduce(
+        (sum: number, b: StockBatch) =>
+          sum + b.quantity_available * b.unit_cost,
+        0,
+      ) || 0;
+    const totalUnits =
+      batches?.reduce(
+        (sum: number, b: StockBatch) => sum + b.quantity_available,
+        0,
+      ) || 0;
 
     return {
       success: true,
@@ -298,7 +321,7 @@ export async function getStockValue() {
   } catch (error) {
     return {
       success: false,
-      error: `Error calculating stock value: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      error: `Error calculating stock value: ${error instanceof Error ? error.message : "Unknown error"}`,
     };
   }
 }
@@ -312,12 +335,12 @@ export async function getExpiringStock(daysUntilExpiry: number = 30) {
     expiryDate.setDate(expiryDate.getDate() + daysUntilExpiry);
 
     const { data: expiringBatches, error } = await supabase
-      .from('stock_batches')
-      .select('*')
-      .not('expiry_date', 'is', null)
-      .lte('expiry_date', expiryDate.toISOString().split('T')[0])
-      .gt('quantity_available', 0)
-      .order('expiry_date', { ascending: true });
+      .from("stock_batches")
+      .select("*")
+      .not("expiry_date", "is", null)
+      .lte("expiry_date", expiryDate.toISOString().split("T")[0])
+      .gt("quantity_available", 0)
+      .order("expiry_date", { ascending: true });
 
     if (error) {
       return {
@@ -337,7 +360,7 @@ export async function getExpiringStock(daysUntilExpiry: number = 30) {
   } catch (error) {
     return {
       success: false,
-      error: `Error getting expiring stock: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      error: `Error getting expiring stock: ${error instanceof Error ? error.message : "Unknown error"}`,
     };
   }
 }
